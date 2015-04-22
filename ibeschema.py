@@ -411,9 +411,9 @@ class IbeSchema(Schema):
                         found = False
                         break
             tr.body = tr_body
-            print(tr.name)
-            for b in tr.body:
-                print(b)
+            # print(tr.name)
+            # for b in tr.body:
+            #     print(b)
 
     def parse_statements(self):
         self.parse_generators()
@@ -448,3 +448,5 @@ class IbeSchema(Schema):
             print(t)
         for sp in self.procedures:
             print(sp.name)
+        for tr in self.triggers:
+            print(tr.name)

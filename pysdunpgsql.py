@@ -3,6 +3,8 @@
 
 import ddl
 import re
+import os
+from os import path
 
 
 # PYSDUN - PYthon Schema/structure of Database UNificator
@@ -45,6 +47,10 @@ class PysdunPgsql:
         return data_type
 
     def export(self, filename):
+        filename_pair = path.splitext(filename)
+        filename_file = filename_pair[0]
+        filename_ext = filename_pair[1]
+
         lines = []
         #
         for generator in self.schema.generators:
@@ -172,7 +178,6 @@ class PysdunPgsql:
         prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/dfpostdb user postgres identified by postgres')
         prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/dfpostdb user postgres identified by masterkey')
 
-
         f = open(filename, 'w')
         try:
             for item in prescript:
@@ -183,6 +188,110 @@ class PysdunPgsql:
             #     f.write(item + ';\n')
         finally:
             f.close()
+
+        #
+        #
+        #
+        #
+        filename = filename_file + '-triggers' + filename_ext
+
+        if os.path.isfile(filename):
+            filename = filename + '~'
+        if os.path.isfile(filename):
+            os.remove(filename)
+
+        lines = []
+
+        for tr in self.schema.triggers:
+            body_mark = '$body$'
+            trigger_procedure = 'trf_{}'.format(tr.name)
+            lines.append('/* - - - - - - - - - - - - - - - - */')
+            lines.append('create or replace function {}()'.format(trigger_procedure))
+            lines.append('  returns opaque as')
+            lines.append(body_mark)
+            lines.append('-- / *')
+
+            for b in tr.body:
+                lines.append('-- ' + b)
+
+            lines.append('-- * /')
+            lines.append(body_mark)
+            lines.append("language 'plpgsql'")
+            lines.append(';')
+
+            lines.append('/* - - - - */')
+            lines.append('create trigger {}'.format(tr.name))
+            lines.append('{}'.format(tr.place))
+            lines.append('on {}'.format(tr.table))
+            lines.append('for each row execute procedure {}'.format(trigger_procedure))
+            lines.append(';')
+
+        f = open(filename, 'w')
+        try:
+            for item in prescript:
+                f.write(item + ';\n')
+            for item in lines:
+                f.write(item + '\n')
+            # for item in ins:
+            #     f.write(item + ';\n')
+        finally:
+            f.close()
+
+
+        #
+        #
+        #
+        #
+        filename = filename_file + '-proc' + filename_ext
+
+        if os.path.isfile(filename):
+            filename = filename + '~'
+        if os.path.isfile(filename):
+            os.remove(filename)
+
+        lines = []
+
+        #
+        # select * from freqsessproc(null, null, null, null)
+        # union
+        # select * from freqsessview
+        for sp in self.schema.procedures:
+            body_mark = '$body$'
+            lines.append('/* - - - - - - - - - - - - - - - - */')
+            lines.append('create or replace function {}'.format(sp.name))
+            lines.append('-- returns table (col1 int, col2 text) ')
+            lines.append('-- returns setof record ')
+            lines.append('-- returns opaque ')
+            lines.append('-- returns void ')
+            lines.append('-- returns setof {}_view'.format(sp.name))
+            lines.append('as')
+            lines.append(body_mark)
+            lines.append('--  declare')
+            lines.append('--    r {}_view%rowtype;'.format(sp.name))
+            lines.append('-- / *')
+
+            for b in sp.body:
+                lines.append('-- ' + b)
+
+            lines.append('-- * /')
+            lines.append(body_mark)
+
+            lines.append("language 'plpgsql' immutable")
+            # immutable --> STABLE
+            lines.append(';')
+
+
+        f = open(filename, 'w')
+        try:
+            for item in prescript:
+                f.write(item + ';\n')
+            for item in lines:
+                f.write(item + '\n')
+            # for item in ins:
+            #     f.write(item + ';\n')
+        finally:
+            f.close()
+
 
 
   #
