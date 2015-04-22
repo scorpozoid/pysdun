@@ -22,6 +22,28 @@
 # fi
 #
 
+#
+# GUT!
+#
+# create or replace function trf_tr_abon_cdma_bi1_setnavig()
+# returns trigger as
+# $body$
+#   declare LastNavig integer;
+#   begin
+#     select into LastNavig max(sys_id) from navig where navig.sysname = new.sysname;
+#     new.navig_id = LastNavig;
+#     return new;
+#   end
+# $body$
+# language 'plpgsql'
+# ;
+#
+# create trigger tr_abon_cdma_bi1_setnavig
+# before insert
+# on abon_cdma
+# for each row execute procedure trf_tr_abon_cdma_bi1_setnavig()
+# ;
+
 import os
 import sys
 import getopt

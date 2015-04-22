@@ -18,6 +18,15 @@ class PysdunPgsql:
         return value.replace('binary', 't_binary')
 
     @staticmethod
+    def ugly_patch_replace_offset(value):
+        result = value
+        result = result.replace('.offset,', '."offset",')
+        result = result.replace(' offset,', ' "offset",')
+        result = result.replace(' offset ', ' "offset" ', )
+        # [!] don't do it w/o huge testing: result = re.sub("[\s+\.]offset[;\s+\,]", ' "offfset" ', result, re.IGNORECASE)
+        return result
+
+    @staticmethod
     def replace_data_type(data_type):
         gr_sub_type = 'gr_sub_type'
         gr_segment_size = 'gr_segment_size'
@@ -78,14 +87,16 @@ class PysdunPgsql:
                 for domain in self.schema.domains:
                     if field.data_type.lower() == domain.name.lower():
                         if domain.autoinc:
-                            data_type = ''
-                            #serial = 'serial'
+                            # serial = 'serial'
                             serial = 'bigserial'
                             for generator in self.schema.generators:
                                 if generator.is_ownered_by(table_name, field.name):
                                     serial = ''
-                                    default = 'default nextval({})'.format(generator.name)
+                                    default = "default nextval('{}')".format(generator.name)
                                     break
+                            if serial != '':  # found default sequence
+                                data_type = ''
+                                not_null = ''
                         break
                 field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
                 field_item = ddl.strip_statement(field_item)
@@ -104,7 +115,7 @@ class PysdunPgsql:
                     field_list = table.uk[fk_name]
                     template = 'alter table {} add constraint {} unique ({})'
                     fk_statement = template.format(
-                        table_name, field_list,
+                        table_name, fk_name,
                         ', '.join([str(f) for f in field_list]))
                     lines.append(fk_statement)
             if table.x is not None:
@@ -180,10 +191,11 @@ class PysdunPgsql:
 
         f = open(filename, 'w')
         try:
-            for item in prescript:
+            for item in prescript[:]:
                 f.write(item + ';\n')
             for item in lines:
-                f.write(item + ';\n')
+                value = PysdunPgsql.ugly_patch_replace_offset(item)
+                f.write(value + ';\n')
             # for item in ins:
             #     f.write(item + ';\n')
         finally:
