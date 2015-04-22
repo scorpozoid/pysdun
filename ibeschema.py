@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 # 
-# This python script converts SQL-script writeen on Interbase/Firebird dialect
+# This python script converts SQL-script written on Interbase/Firebird dialect
 # to Microsoft Transact-SQL compatible script
 # 
 # Restrictions: 
-#     - Don't use comma (;) char anywthere except statement delimiter (for example, in object descriptions)
+#     - Don't use comma (;) char anywhere except statement delimiter (for example, in object descriptions)
 #     - Use simple english database object names (without spaces, national characters, etc)
-#     - Dont't use remote server connection string (like 192.168.47.38:/srv/firebird/moonhattan) in source script 
+#     - Don't use remote server connection string (like 192.168.47.38:/srv/firebird/moonhattan) in source script
 #
 # 2013.03.14 [+] Check for "describe column", "comment on" statements
-# 2013.03.13 [+] Timestamp column datatype changed to datetime for MSSQL
+# 2013.03.13 [+] Timestamp column data type changed to datetime for MSSQL
 #                                GETDATE() used instead of "NOW" Firebird function
 # 2013.01.01 [+] Initial release, base objects supported (database creation, domains, tables)
 #                                Not yet support for views, stored procedures and triggers
@@ -22,10 +22,13 @@ from ddl import Schema
 from ddl import Generator
 from ddl import Domain
 from ddl import Table
+from ddl import StoredProcedure
+from ddl import Trigger
 
 import ddl
 import sys
 import re
+
 
 def debug(msg):
     print(msg.encode(sys.stdout.encoding, errors='replace'))
@@ -43,29 +46,42 @@ class IbeSchema(Schema):
 
     def __init__(self, filename):
         Schema.__init__(self)
-        self.statements = []
+        self.__re_set_term = None
+        self.__lines = []
+        self.__statements = []
         self.load(filename)
 
     def load(self, filename):
         try:
             #lines = [line.replace('\n', ' ') for line in open(infile)]
             #lines = [line.strip() for line in open(infile, encoding='utf-8')]
-            lines = [line.strip() for line in open(filename)]
-            self.prepare_statements(lines)
+            # self.__lines = [line.strip() for line in open(filename)]
+            self.__lines = [line for line in open(filename)]
+            self.prepare_statements()
             self.parse_statements()
+            self.overwrite_sp_bodies()
+            self.overwrite_tr_bodies()
         except IOError as er:
             print('Can\'t open the "{0}" file'.format(filename))
-            
-    def prepare_statements(self, lines):
-        re_set_term = re.compile('SET\s+TERM\s+?([;^])\s+?([;^])', re.IGNORECASE)
+
+
+    def replace_term(self, statement, term):
+        if self.__re_set_term is None:
+            self.__re_set_term = re.compile('set\s+term\s+?([;^])\s+?([;^])', re.IGNORECASE)
+        m = self.__re_set_term.match(statement)
+        if m is not None:
+            term = m.group(1)
+        return term
+
+    def prepare_statements(self):
         term = ';'
         buf = ''
         comment = False
         i = 0
-        for line in lines:
-            m = re_set_term.search(line)
-            if m is not None:
-                term = m.group(1)
+        #stripped_lines = (line.strip() for line in self.__lines[:])
+        for line in self.__lines[:]:
+            line = line.strip()
+            term = self.replace_term(line, term)
             x = line.find('--')
             if -1 < x:
                 line = line[:x]
@@ -86,14 +102,14 @@ class IbeSchema(Schema):
                 continue
             buf = buf + line + ' '
             if term in buf.lower():
-                if re_set_term.match(buf) is None:
+                if self.__re_set_term.match(buf) is None:
                     buf = re.sub('[\t+\r+\n+]', ' ', buf).strip()
                     buf = buf.replace('( ', '(')
                     buf = buf.replace('  ', ' ')
                     if buf.lower().startswith('insert'):
-                        self.statements.append(buf)
+                        self.__statements.append(buf)
                     else:
-                        self.statements.append(buf.lower())
+                        self.__statements.append(buf.lower())
                 buf = ''
 
     def parse_generators(self):
@@ -105,7 +121,7 @@ class IbeSchema(Schema):
         re_gen2 = re.compile(
             'CREATE\s+TRIGGER\s+\w+\s+FOR\s+(\w+)\s+.*new\.([_\w]+)\s*=\s+gen_id\((\w+),\s+\d+\).*;?', re.IGNORECASE
         )
-        for statement in self.statements[:]:
+        for statement in self.__statements[:]:
             
             m = re_gen1.search(statement)
             if m:
@@ -134,7 +150,7 @@ class IbeSchema(Schema):
         re_dom = re.compile(
             'CREATE\s+DOMAIN\s+(\w+)\s+AS\s+(.*)?;', re.IGNORECASE
         )
-        for statement in self.statements[:]:
+        for statement in self.__statements[:]:
             m = re_dom.search(statement)
             if m:
                 dom_name = m.group(1)
@@ -150,7 +166,7 @@ class IbeSchema(Schema):
 
     def parse_views(self):
         self.views = []
-        for statement in self.statements[:]:
+        for statement in self.__statements[:]:
             m = re.match('create\s+view\s+(.*)?;', statement, re.IGNORECASE)
             if m is not None:
                 self.views.append(statement.rstrip(';').strip())
@@ -167,7 +183,7 @@ class IbeSchema(Schema):
             'alter\s+table\s+(\w+)\s+add\s+constraint\s+(\w+)\s+unique\s+\((.*)\);', re.IGNORECASE)
         re_create_index = re.compile(
             'create\s?(unique|asc|ascending|desc|descending)?\s+index\s+(\w+)\s+on\s+(\w+)\s+\((.*)\);', re.IGNORECASE)
-        for statement in self.statements:
+        for statement in self.__statements[:]:
             mt = re_create_table.match(statement)
             if mt is not None:
                 table_name = mt.group(1)
@@ -253,11 +269,151 @@ class IbeSchema(Schema):
                 self.tables[table_name].add_index(index_name, field_list, order, unique)
                 continue
 
+    # def parse_procedures(self):
+    #     self.procedures = []
+    #     g_sp_name = 'g_sp_name'
+    #     g_sp_in = 'g_sp_in'
+    #     g_sp_out = 'g_sp_out'
+    #     g_sp_body = 'g_sp_body'
+    #     rep_alter_sp = \
+    #         'alter\s+procedure\s+(?P<{}>\w+)' \
+    #         '\s*(?:\((?P<{}>.*)\)*)' \
+    #         '\s*(?:RETURNS\s*\((?P<{}>.*)\)*)' \
+    #         '\s*as(?P<{}>.*)?;'.format(
+    #         g_sp_name, g_sp_in, g_sp_out, g_sp_body
+    #     )
+    #     re_alter_sp = re.compile(rep_alter_sp, re.IGNORECASE)
+    #
+    #     for statement in self.__statements[:]:
+    #         m = re_alter_sp.match(statement)
+    #         if m is not None:
+    #             groups = m.groupdict()
+    #             # sp = StoredProcedure(groups[g_sp_name], groups[g_sp_in], groups[g_sp_out], groups[g_sp_body])
+    #             if g_sp_name in groups:
+    #                 sp_name = groups[g_sp_name]
+    #             else:
+    #                 sp_name = ''
+    #             if g_sp_in in groups:
+    #                 sp_in = groups[g_sp_in]
+    #             else:
+    #                 sp_in = ''
+    #             if g_sp_out in groups:
+    #                 sp_out = groups[g_sp_out]
+    #             else:
+    #                 sp_out = ''
+    #             if g_sp_body in groups:
+    #                 sp_body = groups[g_sp_body]
+    #             else:
+    #                 sp_body = ''
+    #             sp = StoredProcedure(sp_name, sp_in, sp_out, sp_body)
+    #             self.procedures.append(sp)
+    #             print('***' + sp.name + ' & ' + sp.pm_in + ' & ' + sp.pm_out + ' & ' + sp.body)
+    #     #re_alter_sp = re.compile('create\s+table\s+(\w+)\s+\((.*)?\);', re.IGNORECASE)
+
+    def overwrite_sp_bodies(self):
+        term = ';'
+        for sp in self.procedures:
+            found = False
+            sp_body = []
+            for line in self.__lines[:]:
+                if not found:
+                    term = self.replace_term(line, term)
+                    rep = 'alter\s+procedure\s+{}'.format(sp.name)
+                    m = re.match(rep, line, re.IGNORECASE)
+                    if m is not None:
+                        found = True
+                if found:
+                    sp_body.append(line.rstrip())
+                    rep_end = "end\s*\\{}".format(term)
+                    if re.match(rep_end, line, re.IGNORECASE):
+                        found = False
+                        break
+                    if line.strip() == term:
+                        found = False
+                        break
+            sp.body = sp_body
+            # print(sp.name)
+            # for b in sp.body:
+            #     print(b)
+
     def parse_procedures(self):
         self.procedures = []
+        rep_alter_sp = 'alter\s+procedure\s+(\w+)'
+        re_alter_sp = re.compile(rep_alter_sp, re.IGNORECASE)
+
+        for statement in self.__statements[:]:
+            m = re_alter_sp.match(statement)
+            if m is not None:
+                sp_name = m.group(1)
+                sp = StoredProcedure(sp_name)
+                sp.body.append(statement)
+                self.procedures.append(sp)
 
     def parse_triggers(self):
         self.triggers = []
+        rep_create_trigger = \
+            'create\s+trigger\s+(?P<p_tr_name>\w+)\s+for\s+(?P<p_table_name>\w+)' \
+            '(?:\s+(active|inactive))' \
+            '(?P<p_tr_place>\s+(before|after)\s+(insert|update|delete))' \
+            '(?:\s+position\s+(?P<p_tr_position>\d+))'
+            #'(?:\s+active)(?P<p_tr_place>\s+(before|after)\s+(insert|update|delete))' \
+            #'(?:\s+position\s+(?P<p_tr_position>\d+))as.*?;'
+        re_create_trigger = re.compile(rep_create_trigger, re.IGNORECASE)
+
+        for statement in self.__statements[:]:
+            m = re_create_trigger.match(statement)
+            if m is not None:
+                groups = m.groupdict()
+                if "p_tr_name" in groups:
+                    tr_name = groups["p_tr_name"].strip()
+                else:
+                    tr_name = ''
+                if "p_table_name" in groups:
+                    table_name = groups["p_table_name"].strip()
+                else:
+                    table_name = ''
+                if "p_tr_place" in groups:
+                    tr_place = groups["p_tr_place"].strip()
+                else:
+                    tr_place = ''
+                if "p_tr_position" in groups:
+                    tr_pos = groups["p_tr_position"]
+                else:
+                    tr_pos = ''
+
+                tr = Trigger(tr_name)
+                tr.table = table_name
+                tr.place = tr_place
+                tr.position = tr_pos
+                tr.body.append(statement)
+
+                self.triggers.append(tr)
+
+    def overwrite_tr_bodies(self):
+        term = ';'
+        for tr in self.triggers:
+            found = False
+            tr_body = []
+            for line in self.__lines[:]:
+                if not found:
+                    term = self.replace_term(line, term)
+                    rep = 'create\s+trigger\s+{}'.format(tr.name)
+                    m = re.match(rep, line, re.IGNORECASE)
+                    if m is not None:
+                        found = True
+                if found:
+                    tr_body.append(line.rstrip())
+                    rep_end = "end\s*\\{}".format(term)
+                    if re.match(rep_end, line, re.IGNORECASE):
+                        found = False
+                        break
+                    if line.strip() == term:
+                        found = False
+                        break
+            tr.body = tr_body
+            print(tr.name)
+            for b in tr.body:
+                print(b)
 
     def parse_statements(self):
         self.parse_generators()
@@ -290,3 +446,5 @@ class IbeSchema(Schema):
                     nullable = ""
                 t += ' {0} {1} {2},'.format(field.name, field.data_type, nullable)
             print(t)
+        for sp in self.procedures:
+            print(sp.name)

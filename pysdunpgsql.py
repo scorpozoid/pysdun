@@ -4,6 +4,7 @@
 import ddl
 import re
 
+
 # PYSDUN - PYthon Schema/structure of Database UNificator
 class PysdunPgsql:
 
@@ -158,6 +159,7 @@ class PysdunPgsql:
         #
         for view in self.schema.views:
             lines.append(view)
+
 
         prescript = []
         prescript.append('-- connect to tcp:postgresql://192.168.47.134:5432/postgres user postgres identified by postgres')

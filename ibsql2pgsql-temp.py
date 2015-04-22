@@ -62,29 +62,29 @@ def main(argv):
     pysdun = PysdunPgsql(schema)
     pysdun.export(outfile)
 
-    try:
-        lines = [line.strip() for line in open(outfile)]
-        for line in lines:
-            print(line)
-    except IOError as er:
-        print('Can\'t open the "{0}" file'.format(outfile))
+    # try:
+    #     lines = [line.strip() for line in open(outfile)]
+    #     for line in lines:
+    #         print(line)
+    # except IOError as er:
+    #     print("Can't open file: {0}".format(outfile))
 
 
 if __name__ == "__main__":
-    # v_argv = (
-    #     "-i",
-    #     "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--.sql",
-    #     "-o",
-    #     "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--pgsql.sql"
-    # )
-
     v_argv = (
-       "-i",
-       "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/SpectrDB.sql",
-       #"/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB.sql",
-       "-o",
-       "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-pgsql.sql"
+        "-i",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--.sql",
+        "-o",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--pgsql.sql"
     )
+
+    # v_argv = (
+    #    "-i",
+    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/SpectrDB.sql",
+    #    #"/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB.sql",
+    #    "-o",
+    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-pgsql.sql"
+    # )
 
     main(v_argv)
     #main(sys.argv[1:])
