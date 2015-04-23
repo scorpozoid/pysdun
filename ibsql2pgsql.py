@@ -47,10 +47,9 @@
 import os
 import sys
 import getopt
-import ddl
 
-from ibeschema import IbeSchema
-from pysdunpgsql import PysdunPgsql
+from ibe_schema import IbeSchema
+from pn_pgsql import PysdunPgsql
 
 
 def debug(msg):
@@ -72,11 +71,19 @@ def main(argv):
             print('ibsql2pgsql.py -i <infile> -o <outfile>')
             sys.exit()
         elif opt in ("-i", "--ifile"):
-            infile = arg
+            infile = arg.strip()
         elif opt in ("-o", "--ofile"):
-            outfile = arg
+            outfile = arg.strip()
     print('Input file is:' + infile)
     print('Output file is:' + outfile)
+
+    if not os.path.isfile(infile):
+        print("Can't open file: '{}'".format(infile))
+        exit()
+
+    if '' == outfile:
+        print("Can't create file w/o name: '{}'".format(outfile))
+        exit()
 
     if os.path.isfile(outfile):
         os.remove(outfile)

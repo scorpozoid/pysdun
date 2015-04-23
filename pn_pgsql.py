@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 #!/usr/bin/python
 
-import ddl
 import re
 import os
+import ibe_ddl
+
 from os import path
 
 
@@ -27,7 +28,15 @@ class PysdunPgsql:
         return result
 
     @staticmethod
+    def ugly_patch_replace_dvbservice_sequence(value):
+        if value == 'dvbservice':
+            return 'dvbservice_seq'
+        return value
+
+    @staticmethod
     def replace_data_type(data_type):
+        blob_bin = 'text';  # [!] 'bytea'
+        blob_memo = 'text';
         gr_sub_type = 'gr_sub_type'
         gr_segment_size = 'gr_segment_size'
         regex_blob = 'blob(?:\s+sub_type\s+(?P<{}>\d+))(?:\s+segment\s+size\s+(?P<{}>\d+))'.format(
@@ -42,13 +51,13 @@ class PysdunPgsql:
             if gr_sub_type in mdt.groupdict():
                 sub_type = mdt.groupdict()[gr_sub_type]
                 sub_types = {
-                    '0': 'bytea',
-                    '1': 'text'
+                    '0': blob_bin,
+                    '1': blob_memo
                 }
                 if sub_type in sub_types:
                     data_type = sub_types[sub_type]
                 else:
-                    data_type = 'bytea'
+                    data_type = blob_bin
         data_type = re.sub('datetime', 'timestamp', data_type, re.IGNORECASE)
         data_type = re.sub("'now'", 'current_timestamp', data_type, re.IGNORECASE)
 
@@ -62,9 +71,14 @@ class PysdunPgsql:
 
         lines = []
         #
+        sequences = set()
         for generator in self.schema.generators:
-            lines.append('create sequence {0}'.format(generator.name))
+            sequence_name = generator.name
+            sequence_name = PysdunPgsql.ugly_patch_replace_dvbservice_sequence(sequence_name)
+            sequences.add(sequence_name)
         #
+        for sequence in sequences:
+            lines.append('create sequence {0}'.format(sequence))
 
         if self.schema.domains:
             for domain in self.schema.domains:
@@ -99,7 +113,7 @@ class PysdunPgsql:
                                 not_null = ''
                         break
                 field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
-                field_item = ddl.strip_statement(field_item)
+                field_item = ibe_ddl.strip_statement(field_item)
 
                 field_list.append(field_item)
             template = 'create table {} ({})'
@@ -130,7 +144,7 @@ class PysdunPgsql:
                     index_statement = 'create {} index {} on {} ({})'.format(
                         unique, x_name, table_name,
                         ', '.join([str(f + ' ' + order) for f in field_list]))
-                    index_statement = ddl.strip_statement(index_statement)
+                    index_statement = ibe_ddl.strip_statement(index_statement)
                     lines.append(index_statement)
             if table.pk is not None:
                 pk_name = 'pk_{}'.format(table_name)
@@ -167,7 +181,7 @@ class PysdunPgsql:
                         ', '.join([str(f) for f in field_list]),
                         ref_table_name,
                         ', '.join([str(f) for f in ref_field_list]), del_rule, upd_rule)
-                    fk_statement = ddl.strip_statement(fk_statement)
+                    fk_statement = ibe_ddl.strip_statement(fk_statement)
                     # dfpost patch
                     # fk_statement = fk_statement.replace('alter table navig', '-- alter table navig')
                     # fk_statement = fk_statement.replace('alter table pf_result', '-- alter table pf_result')
@@ -194,7 +208,8 @@ class PysdunPgsql:
             for item in prescript[:]:
                 f.write(item + ';\n')
             for item in lines:
-                value = PysdunPgsql.ugly_patch_replace_offset(item)
+                value = item
+                value = PysdunPgsql.ugly_patch_replace_offset(value)
                 f.write(value + ';\n')
             # for item in ins:
             #     f.write(item + ';\n')
@@ -262,6 +277,25 @@ class PysdunPgsql:
             os.remove(filename)
 
         lines = []
+
+#   (
+# freq frequency,
+# begtime timestamp,
+# endtime timestamp,
+# immed boolean,
+# breaked boolean,
+# dfexist boolean,
+# pfexist boolean,
+# pwrexist boolean,
+# sndexist boolean,
+# spcexist boolean,
+# alsexist boolean,
+# dvbalsexist boolean,
+# dvbt2alsexist boolean,
+# closed boolean,
+# ses_id guid,
+# sysname shortname
+#   )
 
         #
         # select * from freqsessproc(null, null, null, null)

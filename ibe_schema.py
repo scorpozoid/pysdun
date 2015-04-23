@@ -18,16 +18,16 @@
 # 
 #
 
-from ddl import Schema
-from ddl import Generator
-from ddl import Domain
-from ddl import Table
-from ddl import StoredProcedure
-from ddl import Trigger
-
-import ddl
 import sys
 import re
+
+import ibe_ddl
+from ibe_ddl import Schema
+from ibe_ddl import Generator
+from ibe_ddl import Domain
+from ibe_ddl import Table
+from ibe_ddl import StoredProcedure
+from ibe_ddl import Trigger
 
 
 def debug(msg):
@@ -37,7 +37,7 @@ def debug(msg):
 def strip_localization(value):
     value = re.sub('character\s+set\s+\w+(\s+)?', ' ', value, re.IGNORECASE)
     value = re.sub('collate\s+\w+(\s+)?', ' ', value, re.IGNORECASE)
-    value = ddl.strip_statement(value)
+    value = ibe_ddl.strip_statement(value)
     return value
 
 
