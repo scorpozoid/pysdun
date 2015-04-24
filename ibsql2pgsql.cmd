@@ -49,6 +49,9 @@ copy %PGSCRIPT418TR% %PGSCRIPT419TR%
 copy %PGSCRIPT418TEST01% %PGSCRIPT419TEST01%
 copy %PGSCRIPT418TEST02% %PGSCRIPT419TEST02%
 
+goto postgresql93
+
+:postgresql82
 rem # --
 rem # -- 8.2 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem # --
@@ -88,6 +91,7 @@ echo "FIN: 8.2/4.1.9 %PGHOST%::%DB419%"
 pause
 rem exit /b
 
+:postgresql91
 rem # --
 rem # -- 9.1 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem # --
@@ -95,7 +99,6 @@ set PGHOST=192.168.47.38
 set PGHOSTADDR=192.168.47.38
 set PGUSER=postgres
 set PGPASSWORD=masterkey
-set PGHOSTADDR=192.168.47.38
 set PGPSQL_EXE="%HOME%\bin\pgAdmin III 1.20.0\psql.exe" 
 set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
 
@@ -124,5 +127,44 @@ set DB419=dfpostdb419
 %PGPSQL% -d %DB419% -f %PGSCRIPT419TEST02%
 echo "FIN: 9.1/4.1.9 %PGHOST%::%DB419%"
 pause
+
+:postgresql93
+rem # --
+rem # -- 9.3 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+rem # --
+set PGHOST=192.168.47.35
+set PGHOSTADDR=192.168.47.35
+set PGUSER=postgres
+set PGPASSWORD=postgres
+set PGPSQL_EXE="%HOME%\bin\pgAdmin III 1.20.0\psql.exe" 
+set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
+
+rem # - 9.3 / 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+set DB418=dfpostdb418
+%PGPSQL% -c "drop database %DB418%"
+%PGPSQL% -c "create database %DB418%"
+%PGPSQL% -d %DB418% -c "create language 'plpgsql'"
+%PGPSQL% -d %DB418% -f %PGSCRIPT418MAIN%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418SP%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TR%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST01%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
+echo "FIN: 9.3/4.1.8 %PGHOST%::%DB418%"
+pause
+
+rem # - 9.3 / 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+set DB419=dfpostdb419
+%PGPSQL% -c "drop database %DB419%"
+%PGPSQL% -c "create database %DB419%"
+%PGPSQL% -d %DB419% -c "create language 'plpgsql'"
+%PGPSQL% -d %DB419% -f %PGSCRIPT419MAIN%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419SP%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TR%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TEST01%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TEST02%
+echo "FIN: 9.3/4.1.9 %PGHOST%::%DB419%"
+pause
+
+
 
 rem # /* EOF */
