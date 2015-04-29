@@ -1,3 +1,6 @@
+
+TODO: взять отсюда все полезное и перенести в pn_drupal2oop.py и удалить
+
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 #

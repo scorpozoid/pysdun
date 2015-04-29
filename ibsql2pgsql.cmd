@@ -49,14 +49,62 @@ copy %PGSCRIPT418TR% %PGSCRIPT419TR%
 copy %PGSCRIPT418TEST01% %PGSCRIPT419TEST01%
 copy %PGSCRIPT418TEST02% %PGSCRIPT419TEST02%
 
-goto postgresql93
+rem # --
+rem # -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+rem # --
+rem call :postgresql74
+rem call :postgresql93
+rem call :postgresql91
+call :postgresql82
+goto :EOF
+
+
+:postgresql74
+rem # --
+rem # -- 7.4 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+rem # --
+set PGHOST=192.168.47.33
+set PGHOSTADDR=192.168.47.33
+set PGUSER=ark
+set PGPASSWORD=ark
+rem set PGPASSWORD=masterkey
+set PGPSQL_EXE="%HOME%\bin\pgAdmin III 1.10.5\psql.exe" 
+set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
+
+rem # - 7.4 / 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+set DB418=dfpostdb418
+%PGPSQL% -d template1 -c "drop database %DB418%"
+%PGPSQL% -d template1 -c "create database %DB418%"
+%PGPSQL% -d %DB418% -c "create language plpgsql"
+%PGPSQL% -d %DB418% -f %PGSCRIPT418MAIN%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418SP%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TR%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST01%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
+echo "FIN: 7.4/4.1.8 %PGHOST%::%DB418%"
+pause
+
+rem # - 7.4 / 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+set DB419=dfpostdb419
+%PGPSQL% -d template1 -c "drop database %DB419%"
+%PGPSQL% -d template1 -c "create database %DB419%"
+%PGPSQL% -d %DB419% -c "create language plpgsql"
+%PGPSQL% -d %DB419% -f %PGSCRIPT419MAIN%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419SP%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TR%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TEST01%
+%PGPSQL% -d %DB419% -f %PGSCRIPT419TEST02%
+echo "FIN: 7.4/4.1.9 %PGHOST%::%DB419%"
+pause
+rem exit /b
+goto :EOF
 
 :postgresql82
 rem # --
 rem # -- 8.2 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem # --
-set PGHOST=192.168.47.134
-set PGHOSTADDR=192.168.47.134
+set PGHOST=192.168.47.34
+set PGHOSTADDR=192.168.47.34
 set PGUSER=postgres
 set PGPASSWORD=postgres
 rem set PGPASSWORD=masterkey
@@ -75,7 +123,6 @@ set DB418=dfpostdb418
 %PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
 echo "FIN: 8.2/4.1.8 %PGHOST%::%DB418%"
 pause
-rem exit /b
 
 rem # - 8.2 / 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 set DB419=dfpostdb419
@@ -90,6 +137,7 @@ set DB419=dfpostdb419
 echo "FIN: 8.2/4.1.9 %PGHOST%::%DB419%"
 pause
 rem exit /b
+goto :EOF
 
 :postgresql91
 rem # --
@@ -127,6 +175,8 @@ set DB419=dfpostdb419
 %PGPSQL% -d %DB419% -f %PGSCRIPT419TEST02%
 echo "FIN: 9.1/4.1.9 %PGHOST%::%DB419%"
 pause
+rem exit /b
+goto :EOF
 
 :postgresql93
 rem # --
@@ -164,7 +214,9 @@ set DB419=dfpostdb419
 %PGPSQL% -d %DB419% -f %PGSCRIPT419TEST02%
 echo "FIN: 9.3/4.1.9 %PGHOST%::%DB419%"
 pause
+rem exit /b
+goto :EOF
 
 
-
+:EOF
 rem # /* EOF */
