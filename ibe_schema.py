@@ -149,16 +149,20 @@ class IbeSchema(Schema):
         domains = {}
         re_dom = re.compile(
             'CREATE\s+DOMAIN\s+(\w+)\s+AS\s+(.*)?;', re.IGNORECASE
+            #'CREATE\s+DOMAIN\s+(\w+)\s+AS\s+(?:.*);', re.IGNORECASE
         )
         for statement in self.__statements[:]:
             m = re_dom.search(statement)
             if m:
-                dom_name = m.group(1)
-                data_type = m.group(2).strip()
-                data_type = strip_localization(data_type)
-                autoinc = dom_name.endswith('_autoinc')
-                domain = Domain(dom_name, data_type, autoinc)
-                domains[dom_name] = domain
+                try:
+                    dom_name = m.group(1)
+                    data_type = m.group(2).strip()
+                    data_type = strip_localization(data_type)
+                    autoinc = dom_name.endswith('_autoinc')
+                    domain = Domain(dom_name, data_type, autoinc)
+                    domains[dom_name] = domain
+                except:
+                  print('Error parse "' + statement + '"')
         for dom_name in domains:
             domain = domains[dom_name]
             self.domains.append(domain)

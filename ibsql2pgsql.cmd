@@ -7,18 +7,20 @@ cls
 
 set HOME=C:\home\ark
 set PATH=%PATH%;%HOME%\bin\python-2.7.6.1\App
-set PATH=%PATH%;%HOME%\bin\python-3.2.1.1\App
 set PATH=%PATH%;%HOME%\devel\shell\devel
 
 set PGCLIENTENCODING=utf-8 
 rem set PGCLIENTENCODING=WIN  
 rem set PGCLIENTENCODING=WIN1251
-chcp 65001 
+
+ver | find "6.1" > nul
+if %ERRORLEVEL% == 0 chcp 65001 
+
 rem set PGOPTIONS=--client-min-messages=warning
 rem # [i] debug w/echo: -e
 rem # [w] Don't use &PGHOST & $PGUSER variables here: -h %PGHOST% -U %PGUSER% -n -v ON_ERROR_STOP=1
 rem set PGPSQL_OPTS=-n -v ON_ERROR_STOP=1 -q
-set PGPSQL_OPTS=
+set PGPSQL_OPTS=-v ON_ERROR_STOP=1
 
 set PROJ418=%HOME%\devel\nig\dfpost\418
 set PROJ419=%HOME%\devel\nig\dfpost\419
