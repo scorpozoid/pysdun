@@ -9,6 +9,7 @@ from os import path
 
 
 # PYSDUN - PYthon Schema/structure of Database UNificator
+# Convert IbeSchema to PostgreSQL script
 class PysdunPgsql:
 
     def __init__(self, schema):
@@ -339,6 +340,29 @@ class PysdunPgsql:
             f.close()
 
 
+
+
+
+
+#
+#
+#
+#COMMENT ON DATABASE comment_test
+#  IS '123 dcefeorm
+#
+#
+#qedf
+#
+#qwdf';
+#
+#
+# COMMENT ON TABLE t1
+#  IS 't1 comment
+#multiline';
+#
+#COMMENT ON COLUMN t1.qw IS 'wwww';
+#
+# ##
 
   #
   # # 3) Create foreign keys (references)
