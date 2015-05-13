@@ -17,7 +17,10 @@ class PysdunPgsql:
 
     @staticmethod
     def ugly_patch_replace_binary(value):
-        return value.replace('binary', 't_binary')
+				result = value
+				result = result.replace('binary', 't_binary')
+				result = result.replace('t_t_binary', 't_binary')
+				return result
 
     @staticmethod
     def ugly_patch_replace_offset(value):
