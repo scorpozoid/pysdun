@@ -162,7 +162,7 @@ class IbeSchema(Schema):
                     domain = Domain(dom_name, data_type, autoinc)
                     domains[dom_name] = domain
                 except:
-                  print('Error parse "' + statement + '"')
+                    print('Error parse "' + statement + '"')
         for dom_name in domains:
             domain = domains[dom_name]
             self.domains.append(domain)
@@ -419,13 +419,29 @@ class IbeSchema(Schema):
             # for b in tr.body:
             #     print(b)
 
+    def parse_inserts(self):
+        for statement in self.__statements[:]:
+            if statement.lower().startswith('insert'):
+                self.data.append(statement)
+
+    def parse_header(self):
+        for statement in self.__statements[:]:
+            #(?:\s+position\s+(?P<p_host>\d+))
+            m = re.match("create database \'(?P<p_dbhost>.*:)(?P<p_dbname>)\' user\s+ password.*", statement, re.IGNORECASE)
+            if m is not None:
+                self.alias = m.group(1)
+                for item in ['.gdb', '.ib', '.fdb', "data/", "data\\", 'c:\\']:
+                    self.alias = self.alias.replace(item, '')
+
     def parse_statements(self):
+        self.parse_header()
         self.parse_generators()
         self.parse_domains()
         self.parse_views()
         self.parse_tables()
         self.parse_procedures()
         self.parse_triggers()
+        self.parse_inserts()
 
     def print_schema(self):
         for generator in self.generators:
