@@ -2,10 +2,13 @@
 #!/usr/bin/python
 
 import re
+import codecs
 import os
-import ibe_ddl
 
 from os import path
+
+import ibe_ddl
+
 
 
 # PYSDUN - PYthon Schema/structure of Database UNificator
@@ -28,7 +31,8 @@ class PysdunPgsql:
         result = result.replace('.offset,', '."offset",')
         result = result.replace(' offset,', ' "offset",')
         result = result.replace(' offset ', ' "offset" ', )
-        # [!] don't do it w/o huge testing: result = re.sub("[\s+\.]offset[;\s+\,]", ' "offfset" ', result, re.IGNORECASE)
+        # [!] don't do it w/o huge testing:
+        #     result = re.sub("[\s+\.]offset[;\s+\,]", ' "offfset" ', result, re.IGNORECASE)
         return result
 
     @staticmethod
@@ -39,8 +43,8 @@ class PysdunPgsql:
 
     @staticmethod
     def replace_data_type(data_type):
-        blob_bin = 'text';  # [!] 'bytea'
-        blob_memo = 'text';
+        blob_bin = 'text'  # [!] 'bytea'
+        blob_memo = 'text'
         gr_sub_type = 'gr_sub_type'
         gr_segment_size = 'gr_segment_size'
         regex_blob = 'blob(?:\s+sub_type\s+(?P<{}>\d+))(?:\s+segment\s+size\s+(?P<{}>\d+))'.format(
@@ -195,28 +199,50 @@ class PysdunPgsql:
         for view in self.schema.views:
             lines.append(view)
 
-
         prescript = []
-        prescript.append('-- connect to tcp:postgresql://192.168.47.134:5432/postgres user postgres identified by postgres')
-        prescript.append('-- drop database pysdun');
-        prescript.append('-- disconnect')
-        prescript.append('-- create database pysdun;')
-        prescript.append('-- connect to tcp:postgresql://192.168.47.134:5432/pysdun user postgres identified by postgres')
-        prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by postgres')
-        prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by masterkey')
-        prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/dfpostdb user postgres identified by postgres')
-        prescript.append('-- connect to tcp:postgresql://127.0.0.1:5432/dfpostdb user postgres identified by masterkey')
 
-        f = open(filename, 'w')
+        if not self.schema.host:
+            self.schema.host = '127.0.0.1'
+
+        prescript.append('-- # connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
+        prescript.append('-- # connect to tcp:postgresql://{}:5432/postgres user postgres identified by postgres'.format(self.schema.host))
+        prescript.append('-- # connect to tcp:postgresql://192.168.47.134:5432/postgres user postgres identified by postgres')
+        prescript.append('-- # connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by postgres')
+        prescript.append('-- # connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by masterkey')
+
+        prescript.append('-- connect to tcp:postgresql://{}:5432/postgres user {} identified by {}'.format(self.schema.host, self.schema.username, self.schema.password))
+        prescript.append('-- drop database {}'.format(self.schema.alias))
+        prescript.append('-- disconnect')
+        prescript.append('-- create database {}'.format(self.schema.alias))
+
+        prescript.append('-- connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
+
+
+        file_encoding_utf8 = 'utf-8'
+        file_encoding_win1251 = 'cp1251'
+        pgsql_encoding_utf8 = 'UTF8'
+        pgsql_encoding_win1251 = 'WIN1251'
+        pg_encoding = {
+            file_encoding_utf8: pgsql_encoding_utf8,
+            file_encoding_win1251: pgsql_encoding_win1251
+        }
+        file_encoding = file_encoding_win1251
+        pgsql_encoding = pg_encoding[file_encoding]
+        f = codecs.open(filename, 'w', encoding=file_encoding)
+        # f = open(filename, 'w')
         try:
+            f.write('-- {} \n'.format(file_encoding))
+            f.write("SET CLIENT_ENCODING TO '{}';\n".format(pgsql_encoding))
             for item in prescript[:]:
                 f.write(item + ';\n')
             for item in lines:
                 value = item
                 value = PysdunPgsql.ugly_patch_replace_offset(value)
                 f.write(value + ';\n')
-            # for item in ins:
-            #     f.write(item + ';\n')
+            f.write('/* --- */\n')
+            for item in self.schema.data:
+                f.write(item + '\n')
+            f.write('/* EOF */\n')
         finally:
             f.close()
 
@@ -227,7 +253,7 @@ class PysdunPgsql:
         filename = filename_file + '-triggers' + filename_ext
 
         if os.path.isfile(filename):
-            filename = filename + '~'
+            filename += '~'
         if os.path.isfile(filename):
             os.remove(filename)
 
@@ -265,47 +291,13 @@ class PysdunPgsql:
                 f.write(item + '\n')
             # for item in ins:
             #     f.write(item + ';\n')
+            f.write('/* EOF */\n')
         finally:
             f.close()
 
-
         #
-        #
-        #
-        #
-        filename = filename_file + '-proc' + filename_ext
-
-        if os.path.isfile(filename):
-            filename = filename + '~'
-        if os.path.isfile(filename):
-            os.remove(filename)
-
-        lines = []
-
-#   (
-# freq frequency,
-# begtime timestamp,
-# endtime timestamp,
-# immed boolean,
-# breaked boolean,
-# dfexist boolean,
-# pfexist boolean,
-# pwrexist boolean,
-# sndexist boolean,
-# spcexist boolean,
-# alsexist boolean,
-# dvbalsexist boolean,
-# dvbt2alsexist boolean,
-# closed boolean,
-# ses_id guid,
-# sysname shortname
-#   )
-
-        #
-        # select * from freqsessproc(null, null, null, null)
-        # union
-        # select * from freqsessview
         for sp in self.schema.procedures:
+            lines = []
             body_mark = '$body$'
             lines.append('/* - - - - - - - - - - - - - - - - */')
             lines.append('create or replace function {}'.format(sp.name))
@@ -330,18 +322,24 @@ class PysdunPgsql:
             # immutable --> STABLE
             lines.append(';')
 
+            filename = filename_file + '-sp-' + sp.name + filename_ext
 
-        f = open(filename, 'w')
-        try:
-            for item in prescript:
-                f.write(item + ';\n')
-            for item in lines:
-                f.write(item + '\n')
-            # for item in ins:
-            #     f.write(item + ';\n')
-        finally:
-            f.close()
+            if os.path.isfile(filename):
+                filename += '~'
+            if os.path.isfile(filename):
+                os.remove(filename)
 
+            f = open(filename, 'w')
+            try:
+                # for item in prescript:
+                #     f.write(item + ';\n')
+                for item in lines:
+                    f.write(item + '\n')
+                # for item in ins:
+                #     f.write(item + ';\n')
+                f.write('/* EOF */\n')
+            finally:
+                f.close()
 
 
 

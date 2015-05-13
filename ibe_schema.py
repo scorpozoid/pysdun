@@ -7,7 +7,7 @@
 # Restrictions: 
 #     - Don't use comma (;) char anywhere except statement delimiter (for example, in object descriptions)
 #     - Use simple english database object names (without spaces, national characters, etc)
-#     - Don't use remote server connection string (like 192.168.47.38:/srv/firebird/moonhattan) in source script
+#     - [seems fixed] Don't use remote server connection string (like 192.168.47.38:/srv/firebird/moonhattan) in source script
 #
 # 2013.03.14 [+] Check for "describe column", "comment on" statements
 # 2013.03.13 [+] Timestamp column data type changed to datetime for MSSQL
@@ -20,6 +20,10 @@
 
 import sys
 import re
+import codecs
+import os
+
+from os import path
 
 import ibe_ddl
 from ibe_ddl import Schema
@@ -28,6 +32,8 @@ from ibe_ddl import Domain
 from ibe_ddl import Table
 from ibe_ddl import StoredProcedure
 from ibe_ddl import Trigger
+
+
 
 
 def debug(msg):
@@ -53,10 +59,11 @@ class IbeSchema(Schema):
 
     def load(self, filename):
         try:
-            #lines = [line.replace('\n', ' ') for line in open(infile)]
-            #lines = [line.strip() for line in open(infile, encoding='utf-8')]
-            # self.__lines = [line.strip() for line in open(filename)]
-            self.__lines = [line for line in open(filename)]
+            #self.__lines = [line for line in open(filename)]
+            #self.__lines = [line.strip() for line in open(filename, encoding='utf-8')]
+            #self.__lines = [line.strip() for line in open(filename, encoding='cp1251')]
+            self.__lines = [line for line in codecs.open(filename, encoding='cp1251')]
+
             self.prepare_statements()
             self.parse_statements()
             self.overwrite_sp_bodies()
@@ -426,12 +433,47 @@ class IbeSchema(Schema):
 
     def parse_header(self):
         for statement in self.__statements[:]:
-            #(?:\s+position\s+(?P<p_host>\d+))
-            m = re.match("create database \'(?P<p_dbhost>.*:)(?P<p_dbname>)\' user\s+ password.*", statement, re.IGNORECASE)
+            colon_count = statement.count(':')
+            regexp_alias = \
+                "create\s+database\s+\'(?P<p_db_name>.*)\'\s+" \
+                "user\s+\'(?P<p_db_user>.*)\'\s+password\s+\'(?P<p_db_password>.*)\'"
+            regexp_host = \
+                "create\s+database\s+\'(?P<p_db_host>[\w\d\-_.]+):(?P<p_db_name>.+)\'\s+" \
+                "user\s+\'(?P<p_db_user>.*)\'\s+password\s+\'(?P<p_db_password>.*)\'"
+            regexp_map = {
+                0: regexp_alias,
+                1: regexp_host,
+                2: regexp_host
+            }
+            regexp_pattern = regexp_alias
+            if colon_count in regexp_map:
+                regexp_pattern = regexp_map[colon_count]
+
+            m = re.match(regexp_pattern, statement, re.IGNORECASE)
             if m is not None:
-                self.alias = m.group(1)
-                for item in ['.gdb', '.ib', '.fdb', "data/", "data\\", 'c:\\']:
-                    self.alias = self.alias.replace(item, '')
+                groups = m.groupdict()
+                if "p_db_host" in groups:
+                    self.host = groups["p_db_host"].strip()
+                    drive_list = ['a', 'b', 'c', 'd', 'e', 'f']
+                    if self.host in drive_list:
+                        self.host = ''
+                else:
+                    self.host = ''
+                if "p_db_name" in groups:
+                    self.alias = groups["p_db_name"].strip()
+                    self.alias = os.path.basename(self.alias)
+                    self.alias = path.splitext(self.alias)[0]
+                else:
+                    self.alias = ''
+                if "p_db_user" in groups:
+                    self.username = groups["p_db_user"].strip()
+                else:
+                    self.username = ''
+                if "p_db_password" in groups:
+                    self.password = groups["p_db_password"].strip()
+                else:
+                    self.password = ''
+
 
     def parse_statements(self):
         self.parse_header()
@@ -442,6 +484,13 @@ class IbeSchema(Schema):
         self.parse_procedures()
         self.parse_triggers()
         self.parse_inserts()
+
+        # print(self.data)
+        # print("h " + self.host)
+        # print("a " + self.alias)
+        # print(self.username)
+        # print(self.password)
+
 
     def print_schema(self):
         for generator in self.generators:

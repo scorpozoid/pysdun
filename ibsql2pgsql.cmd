@@ -27,7 +27,8 @@ set PROJ419=%HOME%\devel\nig\dfpost\419
 set PROJXE3=%HOME%\devel\nig\dfpost\xe3
 
 rem # - 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB.sql
+rem set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB.sql
+set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB-4.14.sql
 set PGSCRIPT418MAIN=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql.sql
 set PGSCRIPT418SP=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-proc.sql
 set PGSCRIPT418TR=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-triggers.sql
@@ -105,8 +106,8 @@ goto :EOF
 rem # --
 rem # -- 8.2 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem # --
-set PGHOST=192.168.47.34
-set PGHOSTADDR=192.168.47.34
+set PGHOST=192.168.47.134
+set PGHOSTADDR=192.168.47.134
 set PGUSER=postgres
 set PGPASSWORD=postgres
 rem set PGPASSWORD=masterkey
@@ -125,6 +126,7 @@ set DB418=dfpostdb418
 %PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
 echo "FIN: 8.2/4.1.8 %PGHOST%::%DB418%"
 pause
+exit /b
 
 rem # - 8.2 / 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 set DB419=dfpostdb419
