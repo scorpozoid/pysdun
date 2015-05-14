@@ -204,6 +204,7 @@ class PysdunPgsql:
         if not self.schema.host:
             self.schema.host = '127.0.0.1'
 
+
         prescript.append('-- # connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
         prescript.append('-- # connect to tcp:postgresql://{}:5432/postgres user postgres identified by postgres'.format(self.schema.host))
         prescript.append('-- # connect to tcp:postgresql://192.168.47.134:5432/postgres user postgres identified by postgres')
@@ -216,7 +217,6 @@ class PysdunPgsql:
         prescript.append('-- create database {}'.format(self.schema.alias))
 
         prescript.append('-- connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
-
 
         file_encoding_utf8 = 'utf-8'
         file_encoding_win1251 = 'cp1251'
@@ -232,7 +232,7 @@ class PysdunPgsql:
         # f = open(filename, 'w')
         try:
             f.write('-- {} \n'.format(file_encoding))
-            f.write("SET CLIENT_ENCODING TO '{}';\n".format(pgsql_encoding))
+            f.write("set client_encoding to '{}';\n".format(pgsql_encoding))
             for item in prescript[:]:
                 f.write(item + ';\n')
             for item in lines:
