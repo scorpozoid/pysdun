@@ -4,11 +4,11 @@
 import re
 import codecs
 import os
+import textwrap
 
 from os import path
 
 import ibe_ddl
-
 
 
 # PYSDUN - PYthon Schema/structure of Database UNificator
@@ -17,6 +17,12 @@ class PysdunPgsql:
 
     def __init__(self, schema):
         self.schema = schema
+
+    @staticmethod
+    def unident(string):
+        if string and string[0] == '\n':
+            string = string[1:]
+        return textwrap.dedent(string)
 
     @staticmethod
     def ugly_patch_replace_binary(value):
@@ -32,7 +38,7 @@ class PysdunPgsql:
         result = result.replace(' offset,', ' "offset",')
         result = result.replace(' offset ', ' "offset" ', )
         # [!] don't do it w/o huge testing:
-        #     result = re.sub("[\s+\.]offset[;\s+\,]", ' "offfset" ', result, re.IGNORECASE)
+        #     result = re.sub("[\s+\.]offset[;\s+\,]", ' "offfset" ', result, flags=re.I)
         return result
 
     @staticmethod
@@ -66,8 +72,9 @@ class PysdunPgsql:
                     data_type = sub_types[sub_type]
                 else:
                     data_type = blob_bin
-        data_type = re.sub('datetime', 'timestamp', data_type, re.IGNORECASE)
-        data_type = re.sub("'now'", 'current_timestamp', data_type, re.IGNORECASE)
+        data_type = re.sub('datetime', 'timestamp', data_type, flags=re.I)
+        data_type = re.sub("'now'", 'current_timestamp', data_type, flags=re.I)
+        data_type = re.sub('numeric\(18,\s*0\)', 'bigint', data_type, flags=re.I)
 
         data_type = PysdunPgsql.ugly_patch_replace_binary(data_type)
         return data_type
@@ -82,7 +89,7 @@ class PysdunPgsql:
         sequences = set()
         for generator in self.schema.generators:
             sequence_name = generator.name
-            sequence_name = PysdunPgsql.ugly_patch_replace_dvbservice_sequence(sequence_name)
+            sequence_name = self.ugly_patch_replace_dvbservice_sequence(sequence_name)
             sequences.add(sequence_name)
         #
         for sequence in sequences:
@@ -90,10 +97,10 @@ class PysdunPgsql:
 
         if self.schema.domains:
             for domain in self.schema.domains:
-                data_type = PysdunPgsql.replace_data_type(domain.data_type)
+                data_type = self.replace_data_type(domain.data_type)
 
                 domain_name = domain.name
-                domain_name = PysdunPgsql.ugly_patch_replace_binary(domain_name)
+                domain_name = self.ugly_patch_replace_binary(domain_name)
                 lines.append('create domain {0} as {1}'.format(domain_name, data_type))
         #
         for table_name in self.schema.tables:
@@ -199,24 +206,26 @@ class PysdunPgsql:
         for view in self.schema.views:
             lines.append(view)
 
-        prescript = []
+        sql_data = [] # inserts
+        for data in self.schema.data[:]:
+            data_line = re.sub("'now'", 'current_timestamp', data, flags=re.I)
+            # print(data_line)
+            sql_data.append(data_line)
 
         if not self.schema.host:
             self.schema.host = '127.0.0.1'
 
+        prescript_template = """
+            -- {file_encoding}
+            set client_encoding to '{client_encoding}';
 
-        prescript.append('-- # connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
-        prescript.append('-- # connect to tcp:postgresql://{}:5432/postgres user postgres identified by postgres'.format(self.schema.host))
-        prescript.append('-- # connect to tcp:postgresql://192.168.47.134:5432/postgres user postgres identified by postgres')
-        prescript.append('-- # connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by postgres')
-        prescript.append('-- # connect to tcp:postgresql://127.0.0.1:5432/postgres user postgres identified by masterkey')
+            -- connect to tcp:postgresql://{db_host}:5432/{master} user {db_user} identified by {db_password};
+            -- drop database {db_alias};
+            -- disconnect;
+            -- create database {db_alias};
 
-        prescript.append('-- connect to tcp:postgresql://{}:5432/postgres user {} identified by {}'.format(self.schema.host, self.schema.username, self.schema.password))
-        prescript.append('-- drop database {}'.format(self.schema.alias))
-        prescript.append('-- disconnect')
-        prescript.append('-- create database {}'.format(self.schema.alias))
-
-        prescript.append('-- connect to tcp:postgresql://{}:5432/{} user {} identified by {}'.format(self.schema.host, self.schema.alias, self.schema.username, self.schema.password))
+            -- connect to tcp:postgresql://{db_host}:5432/{db_alias} user {db_user} identified by {db_password};
+            """
 
         file_encoding_utf8 = 'utf-8'
         file_encoding_win1251 = 'cp1251'
@@ -228,16 +237,23 @@ class PysdunPgsql:
         }
         file_encoding = file_encoding_win1251
         pgsql_encoding = pg_encoding[file_encoding]
+
+        prescript = self.unident(prescript_template).format(
+            file_encoding=file_encoding,
+            client_encoding=pgsql_encoding,
+            master='postgres', # may be 'template1'
+            db_host=self.schema.host,
+            db_user='postgres',
+            db_password=self.schema.password,
+            db_alias=self.schema.alias,
+        )
         f = codecs.open(filename, 'w', encoding=file_encoding)
-        # f = open(filename, 'w')
         try:
-            f.write('-- {} \n'.format(file_encoding))
-            f.write("set client_encoding to '{}';\n".format(pgsql_encoding))
-            for item in prescript[:]:
-                f.write(item + ';\n')
+            f.write(prescript)
+
             for item in lines:
                 value = item
-                value = PysdunPgsql.ugly_patch_replace_offset(value)
+                value = self.ugly_patch_replace_offset(value)
                 f.write(value + ';\n')
             f.write('/* --- */\n')
             for item in self.schema.data:
@@ -247,103 +263,105 @@ class PysdunPgsql:
             f.close()
 
         #
-        #
-        #
-        #
-        filename = filename_file + '-triggers' + filename_ext
+        tr_filename = filename_file + '-triggers' + filename_ext
 
-        if os.path.isfile(filename):
-            filename += '~'
-        if os.path.isfile(filename):
-            os.remove(filename)
+        if os.path.isfile(tr_filename):
+            tr_filename += '~'
+        if os.path.isfile(tr_filename):
+            os.remove(tr_filename)
 
-        lines = []
+        trigger_lines = []
 
         for tr in self.schema.triggers:
-            body_mark = '$body$'
-            trigger_procedure = 'trf_{}'.format(tr.name)
-            lines.append('/* - - - - - - - - - - - - - - - - */')
-            lines.append('create or replace function {}()'.format(trigger_procedure))
-            lines.append('  returns opaque as')
-            lines.append(body_mark)
-            lines.append('-- / *')
+            trigger_template = """
+                create or replace function trf_{trigger_name}() returns opaque as
+                $$
+                  /*
+                  {trigger_body}
+                  */
+                $$
+                language 'plpgsql';
 
-            for b in tr.body:
-                lines.append('-- ' + b)
+                create trigger {trigger_name} {trigger_place} on {table_name}
+                  for each row execute procedure trf_{trigger_name}
+                ;
+                """
+            trigger_block = self.unident(trigger_template).format(
+                trigger_name=tr.name,
+                trigger_place=tr.place,
+                table_name=tr.table,
+                trigger_body='\n'.join(map(lambda body_line: '  -- ' + body_line, tr.body))
+            )
+            trigger_lines.append(trigger_block)
 
-            lines.append('-- * /')
-            lines.append(body_mark)
-            lines.append("language 'plpgsql'")
-            lines.append(';')
-
-            lines.append('/* - - - - */')
-            lines.append('create trigger {}'.format(tr.name))
-            lines.append('{}'.format(tr.place))
-            lines.append('on {}'.format(tr.table))
-            lines.append('for each row execute procedure {}'.format(trigger_procedure))
-            lines.append(';')
-
-        f = open(filename, 'w')
+        f = open(tr_filename, 'w')
         try:
-            for item in prescript:
-                f.write(item + ';\n')
-            for item in lines:
-                f.write(item + '\n')
-            # for item in ins:
-            #     f.write(item + ';\n')
+            f.write(prescript)
+            f.write(trigger_lines)
             f.write('/* EOF */\n')
         finally:
             f.close()
 
         #
         for sp in self.schema.procedures:
-            lines = []
-            body_mark = '$body$'
-            lines.append('/* - - - - - - - - - - - - - - - - */')
-            lines.append('create or replace function {}'.format(sp.name))
-            lines.append('-- returns table (col1 int, col2 text) ')
-            lines.append('-- returns setof record ')
-            lines.append('-- returns opaque ')
-            lines.append('-- returns void ')
-            lines.append('-- returns setof {}_view'.format(sp.name))
-            lines.append('as')
-            lines.append(body_mark)
-            lines.append('--  declare')
-            lines.append('--    r {}_view%rowtype;'.format(sp.name))
-            lines.append('-- / *')
+            procedure_template = """
+                --
+                -- create type t_{function_name} as (
+                --   col1 int,
+                --   col2 int
+                -- );
+                --
 
-            for b in sp.body:
-                lines.append('-- ' + b)
+                create or replace function {function_name}
+                -- returns setof t_{function_name}
+                -- returns setof {}_view
+                -- returns table (col1 int, col2 text)
+                -- returns setof record
+                -- returns opaque
+                -- returns void
+                as
+                $$
+                --  declare
+                --    r {function_name}_view%rowtype;
+                --    r t_{function_name}%rowtype;
+                  /*
+                  {function_body}
+                  */
+                $$
+                language 'plpgsql'
+                immutable /* immutable | stable */
+                ;
+                """
 
-            lines.append('-- * /')
-            lines.append(body_mark)
+            procedure_block = self.unident(procedure_template).format(
+                function_name=sp.name,
+                function_body='\n'.join(map(lambda body_line: '  -- ' + body_line, sp.body))
+            )
 
-            lines.append("language 'plpgsql' immutable")
-            # immutable --> STABLE
-            lines.append(';')
-
-            filename = filename_file + '-sp-' + sp.name + filename_ext
-
-            if os.path.isfile(filename):
-                filename += '~'
-            if os.path.isfile(filename):
-                os.remove(filename)
-
-            f = open(filename, 'w')
+            sp_filename = filename_file + '-sp-' + sp.name + filename_ext
+            if os.path.isfile(sp_filename):
+                sp_filename += '~'
+            if os.path.isfile(sp_filename):
+                os.remove(sp_filename)
+            f = open(sp_filename, 'w')
             try:
-                # for item in prescript:
-                #     f.write(item + ';\n')
-                for item in lines:
-                    f.write(item + '\n')
-                # for item in ins:
-                #     f.write(item + ';\n')
+                f.write(procedure_block)
                 f.write('/* EOF */\n')
             finally:
                 f.close()
 
-
-
-
+        data_filename = filename_file + '-data' + filename_ext
+        if os.path.isfile(data_filename):
+            data_filename += '~'
+        if os.path.isfile(data_filename):
+            os.remove(data_filename)
+        f = open(data_filename, 'w')
+        try:
+            for sql_data_item in sql_data[:]:
+                f.write(sql_data_item)
+            f.write('/* EOF */\n')
+        finally:
+            f.close()
 
 #
 #

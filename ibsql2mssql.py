@@ -73,7 +73,7 @@ if __name__ == "__main__":
         "-i",
         "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-4.14.sql",
         "-o",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(MSSQL-NEW)/dfPostDB--mssql.sql"
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(MSSQL-NEW)/dfpostdb-mssql.sql"
     )
 
     # v_argv = (
