@@ -71,9 +71,9 @@ def main(argv):
 if __name__ == "__main__":
     v_argv = (
         "-i",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-4.14.sql",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-ib.sql",
         "-o",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(MSSQL-NEW)/dfpostdb-mssql.sql"
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-mssql.sql"
     )
 
     # v_argv = (

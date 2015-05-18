@@ -87,7 +87,7 @@ class PysdunMssql:
         return data_type
 
     def export(self, filename):
-        ddl_header = []  # inserts
+        ddl_header = []
         # ddl_sequences = []
         ddl_udt = []  # user defined types aka domain
         ddl_tables = []
@@ -96,8 +96,8 @@ class PysdunMssql:
         ddl_pk = []
         ddl_uk = []
         ddl_fk = []
-        ddl_triggers = []
         ddl_stored_procedures = {}
+        ddl_triggers = []
         sql_data = []  # inserts
 
         #
@@ -223,42 +223,6 @@ class PysdunMssql:
             ddl_views.append(view)
 
         #
-        for data in self.schema.data[:]:
-            data_line = re.sub("'now'", 'getdate()', data, flags=re.I)
-            # print(data_line)
-            sql_data.append(data_line)
-
-        #
-        for trigger in self.schema.triggers[:]:
-            ddl_trigger_template = """
-                /* --- */
-                if exists(
-                  select * from dbo.sysobjects
-                  where name = '{trigger_name}' and objectproperty(id, 'IsTrigger') = 1
-                )
-                  drop trigger {trigger_name}
-                go
-
-                create trigger {trigger_name} on {table_name} {trigger_place} as
-                begin
-                  set nocount on;
-                  /*
-                  {trigger_body}
-                  */
-                end
-                go
-                """
-
-            ddl_triggers.append(
-                self.unident(ddl_trigger_template).format(
-                    trigger_name=trigger.name,
-                    table_name=trigger.table,
-                    trigger_place=trigger.place,
-                    trigger_body='\n'.join(map(lambda body_line: '  -- ' + body_line, trigger.body))
-                )
-            )
-
-        #
         for procedure in self.schema.procedures:
             procedure_template = """
                 use [{database_alias}]
@@ -291,8 +255,44 @@ class PysdunMssql:
                 input_parameters='-- ' + procedure.pm_in,
                 output_parameters='-- ' + procedure.pm_out,
                 procedure_body='\n'.join(map(lambda body_line: '  -- ' + body_line, procedure.body))
-
             )
+
+        #
+        for trigger in self.schema.triggers[:]:
+            ddl_trigger_template = """
+                /* --- */
+                if exists(
+                  select * from dbo.sysobjects
+                  where name = '{trigger_name}' and objectproperty(id, 'IsTrigger') = 1
+                )
+                  drop trigger {trigger_name}
+                go
+
+                create trigger {trigger_name} on {table_name} {trigger_place} as
+                begin
+                  set nocount on;
+                  /*
+                  {trigger_body}
+                  */
+                end
+                go
+                """
+
+            ddl_triggers.append(
+                self.unident(ddl_trigger_template).format(
+                    trigger_name=trigger.name,
+                    table_name=trigger.table,
+                    trigger_place=trigger.place,
+                    trigger_body='\n'.join(map(lambda body_line: '  -- ' + body_line, trigger.body))
+                )
+            )
+
+        #
+        for data in self.schema.data[:]:
+            data_line = re.sub("'now'", 'getdate()', data, flags=re.I)
+            # print(data_line)
+            sql_data.append(data_line)
+
 
         # if not self.schema.host:
         #     self.schema.host = '127.0.0.1'
@@ -368,34 +368,24 @@ class PysdunMssql:
         f = codecs.open(fn_main, 'w', encoding=file_encoding)
         try:
             f.write('-- {} \n'.format(file_encoding))
-            for header_item in ddl_header[:]:
-                f.write(header_item)
-            # mssql-2012 or higher
-            # for seq_item in ddl_sequences[:]:
-            #    f.write(seq_item + '\n')
-            for udt_item in sorted(ddl_udt[:]):
-                f.write(udt_item + '\n')
+            f.write('\n'.join(ddl_header[:]))
+            # mssql-2012 or higher - f.write('\n'.join(sorted(ddl_sequences)))
+            f.write('\n'.join(sorted(ddl_udt)))
+            f.write(crlf)
+            f.write(go)
+            f.write('\n'.join(sorted(ddl_tables[:])))
+            f.write(crlf)
+            f.write('\n'.join(sorted(ddl_indices[:])))
+            f.write(crlf)
+            f.write('\n'.join(sorted(ddl_pk[:])))
+            f.write(crlf)
+            f.write('\n'.join((ddl_uk[:])))
+            f.write(crlf)
+            f.write('\n'.join((ddl_fk[:])))
             f.write(go)
             f.write(crlf)
-            for table_item in sorted(ddl_tables[:]):
-                f.write(table_item + '\n')
-            f.write(crlf)
-            for index_item in sorted(ddl_indices[:]):
-                f.write(index_item + '\n')
-            f.write(crlf)
-            for pk in sorted(ddl_pk[:]):
-                f.write(pk + '\n')
-            f.write(crlf)
-            for uk in sorted(ddl_uk[:]):
-                f.write(uk + '\n')
-            f.write(crlf)
-            for fk in sorted(ddl_fk[:]):
-                f.write(fk + '\n')
+            f.write('\n'.join(sorted(ddl_views[:])))
             f.write(go)
-            f.write(crlf)
-            for view_item in sorted(ddl_views[:]):
-                f.write(view_item + '\n')
-                f.write(go)
             f.write(crlf)
             f.write('/* EOF */\n')
         finally:

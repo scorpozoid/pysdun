@@ -101,12 +101,12 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    # v_argv = (
-    #     "-i",
-    #     "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--.sql",
-    #     "-o",
-    #     "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB--pgsql.sql"
-    # )
+    v_argv = (
+        "-i",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-ib.sql",
+        "-o",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-pgsql.sql"
+    )
 
     # v_argv = (
     #    "-i",
@@ -116,5 +116,5 @@ if __name__ == "__main__":
     #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-pgsql.sql"
     # )
 
-    # main(v_argv)
-    main(sys.argv[1:])
+    main(v_argv)
+    #main(sys.argv[1:])

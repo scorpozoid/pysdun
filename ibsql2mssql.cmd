@@ -28,18 +28,12 @@ set PROJXE3=%HOME%\devel\nig\dfpost\xe3
 
 rem # - 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB.sql
-rem set PGSCRIPT418MAIN=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql.sql
-rem set PGSCRIPT418SP=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-proc.sql
-rem set PGSCRIPT418TR=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-triggers.sql
-rem set PGSCRIPT418TEST01=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-01.sql
-rem set PGSCRIPT418TEST02=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-02.sql
-
-set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-ib.sql
-set PGSCRIPT418MAIN=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql.sql
-set PGSCRIPT418SP=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql-proc.sql
-set PGSCRIPT418TR=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql-triggers.sql
-set PGSCRIPT418TEST01=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql-test-01.sql
-set PGSCRIPT418TEST02=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql-test-02.sql
+set IBESCRIPT418=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB-4.14.sql
+set PGSCRIPT418MAIN=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql.sql
+set PGSCRIPT418SP=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-proc.sql
+set PGSCRIPT418TR=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-triggers.sql
+set PGSCRIPT418TEST01=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-01.sql
+set PGSCRIPT418TEST02=%PROJ418%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-02.sql
 
 python ibsql2pgsql.py -i %IBESCRIPT418% -o %PGSCRIPT418MAIN%
 
@@ -51,20 +45,20 @@ set PGSCRIPT419TR=%PROJ419%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-tr
 set PGSCRIPT419TEST01=%PROJ419%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-01.sql
 set PGSCRIPT419TEST02=%PROJ419%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql-test-02.sql
 
-rem python ibsql2pgsql.py -i %IBESCRIPT419% -o %PGSCRIPT419MAIN%
+python ibsql2pgsql.py -i %IBESCRIPT419% -o %PGSCRIPT419MAIN%
 
-rem copy %PGSCRIPT418SP% %PGSCRIPT419SP%
-rem copy %PGSCRIPT418TR% %PGSCRIPT419TR%
-rem copy %PGSCRIPT418TEST01% %PGSCRIPT419TEST01%
-rem copy %PGSCRIPT418TEST02% %PGSCRIPT419TEST02%
+copy %PGSCRIPT418SP% %PGSCRIPT419SP%
+copy %PGSCRIPT418TR% %PGSCRIPT419TR%
+copy %PGSCRIPT418TEST01% %PGSCRIPT419TEST01%
+copy %PGSCRIPT418TEST02% %PGSCRIPT419TEST02%
 
 rem # --
 rem # -- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 rem # --
 rem call :postgresql74
 rem call :postgresql93
-call :postgresql91
-rem call :postgresql82
+rem call :postgresql91
+call :postgresql82
 goto :EOF
 
 
@@ -158,7 +152,6 @@ set PGHOSTADDR=192.168.47.38
 set PGUSER=postgres
 set PGPASSWORD=masterkey
 set PGPSQL_EXE="%HOME%\bin\pgAdmin III 1.20.0\psql.exe" 
-set PGPSQL_EXE="C:\Program Files\PostgreSQL\9.1\bin\psql.exe"
 set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
 
 rem # - 9.1 / 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -169,11 +162,10 @@ set DB418=dfpostdb418
 %PGPSQL% -d %DB418% -f %PGSCRIPT418MAIN%
 %PGPSQL% -d %DB418% -f %PGSCRIPT418SP%
 %PGPSQL% -d %DB418% -f %PGSCRIPT418TR%
-rem %PGPSQL% -d %DB418% -f %PGSCRIPT418TEST01%
-rem %PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST01%
+%PGPSQL% -d %DB418% -f %PGSCRIPT418TEST02%
 echo "FIN: 9.1/4.1.8 %PGHOST%::%DB418%"
 pause
-exit /b
 
 rem # - 9.1 / 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 set DB419=dfpostdb419

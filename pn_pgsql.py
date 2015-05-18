@@ -80,11 +80,19 @@ class PysdunPgsql:
         return data_type
 
     def export(self, filename):
-        filename_pair = path.splitext(filename)
-        filename_file = filename_pair[0]
-        filename_ext = filename_pair[1]
+        ddl_header = []
+        ddl_sequences = []
+        ddl_domains = []
+        ddl_tables = []
+        ddl_views = []
+        ddl_indices = []
+        ddl_pk = []
+        ddl_uk = []
+        ddl_fk = []
+        ddl_stored_procedures = {}
+        ddl_triggers = []
+        sql_data = []  # inserts
 
-        lines = []
         #
         sequences = set()
         for generator in self.schema.generators:
@@ -93,7 +101,7 @@ class PysdunPgsql:
             sequences.add(sequence_name)
         #
         for sequence in sequences:
-            lines.append('create sequence {0}'.format(sequence))
+            ddl_sequences.append('create sequence {0};'.format(sequence))
 
         if self.schema.domains:
             for domain in self.schema.domains:
@@ -101,7 +109,7 @@ class PysdunPgsql:
 
                 domain_name = domain.name
                 domain_name = self.ugly_patch_replace_binary(domain_name)
-                lines.append('create domain {0} as {1}'.format(domain_name, data_type))
+                ddl_domains.append('create domain {0} as {1};'.format(domain_name, data_type))
         #
         for table_name in self.schema.tables:
             table = self.schema.tables[table_name]
@@ -131,22 +139,14 @@ class PysdunPgsql:
                 field_item = ibe_ddl.strip_statement(field_item)
 
                 field_list.append(field_item)
-            template = 'create table {} ({})'
+            template = 'create table {} ({});'
             table_statement = template.format(
                 table.name,
                 ', '.join([str(f) for f in field_list]))
-            lines.append(table_statement)
+            ddl_tables.append(table_statement)
         #
         for table_name in self.schema.tables:
             table = self.schema.tables[table_name]
-            if table.uk is not None:
-                for fk_name in table.uk:
-                    field_list = table.uk[fk_name]
-                    template = 'alter table {} add constraint {} unique ({})'
-                    fk_statement = template.format(
-                        table_name, fk_name,
-                        ', '.join([str(f) for f in field_list]))
-                    lines.append(fk_statement)
             if table.x is not None:
                 for x_name in table.x:
                     field_list = table.x[x_name][0]
@@ -156,18 +156,26 @@ class PysdunPgsql:
                         order = ''
                     if unique is None:
                         unique = ''
-                    index_statement = 'create {} index {} on {} ({})'.format(
+                    index_statement = 'create {} index {} on {} ({});'.format(
                         unique, x_name, table_name,
                         ', '.join([str(f + ' ' + order) for f in field_list]))
                     index_statement = ibe_ddl.strip_statement(index_statement)
-                    lines.append(index_statement)
+                    ddl_indices.append(index_statement)
+            if table.uk is not None:
+                for fk_name in table.uk:
+                    field_list = table.uk[fk_name]
+                    template = 'alter table {} add constraint {} unique ({});'
+                    fk_statement = template.format(
+                        table_name, fk_name,
+                        ', '.join([str(f) for f in field_list]))
+                    ddl_uk.append(fk_statement)
             if table.pk is not None:
                 pk_name = 'pk_{}'.format(table_name)
-                template = 'alter table {} add constraint {} primary key ({})'
+                template = 'alter table {} add constraint {} primary key ({});'
                 pk_statement = template.format(
                     table_name, pk_name,
                     ', '.join([str(f) for f in table.pk]))
-                lines.append(pk_statement)
+                ddl_pk.append(pk_statement)
         #
         for table_name in self.schema.tables:
             table = self.schema.tables[table_name]
@@ -190,7 +198,7 @@ class PysdunPgsql:
                         del_rule = del_rule.strip()
                     if upd_rule:
                         upd_rule = upd_rule.strip()
-                    template = 'alter table {} add constraint {} foreign key ({}) references {} ({}) {} {}'
+                    template = 'alter table {} add constraint {} foreign key ({}) references {} ({}) {} {};'
                     fk_statement = template.format(
                         table_name, fk_name,
                         ', '.join([str(f) for f in field_list]),
@@ -201,12 +209,76 @@ class PysdunPgsql:
                     # fk_statement = fk_statement.replace('alter table navig', '-- alter table navig')
                     # fk_statement = fk_statement.replace('alter table pf_result', '-- alter table pf_result')
                     # fk_statement = fk_statement.replace('alter table worksession', '-- alter table worksession')
-                    lines.append(fk_statement)
+                    ddl_fk.append(fk_statement + ';')
         #
         for view in self.schema.views:
-            lines.append(view)
+            ddl_views.append(view + ';')
 
-        sql_data = [] # inserts
+        #
+        for procedure in self.schema.procedures:
+            function_template = """
+                --
+                -- create type t_{function_name} as (
+                --   col1 int,
+                --   col2 int
+                -- );
+                --
+
+                create or replace function {function_name}()
+                returns void
+                -- returns setof t_{function_name}
+                -- returns setof {function_name}_view
+                -- returns table (col1 int, col2 text)
+                -- returns setof record
+                -- returns opaque
+                as
+                $$
+                begin
+                --  declare
+                --    r {function_name}_view%rowtype;
+                --    r t_{function_name}%rowtype;
+                --  /*
+                {function_body}
+                --  */
+                end
+                $$
+                language 'plpgsql'
+                immutable /* immutable | stable */
+                ;
+                """
+
+            function_block = self.unident(function_template).format(
+                function_name=procedure.name,
+                function_body='\n'.join(map(lambda body_line: '--  ' + body_line, procedure.body))
+            )
+
+            ddl_stored_procedures[procedure.name] = function_block
+
+        for trigger in self.schema.triggers:
+            trigger_template = """
+                create or replace function trf_{trigger_name}() returns trigger /* trigger | opaque */
+                as
+                $$
+                begin
+                --  /*
+                {trigger_body}
+                --  */
+                end
+                $$
+                language 'plpgsql';
+
+                create trigger {trigger_name} {trigger_place} on {table_name}
+                  for each row execute procedure trf_{trigger_name}()
+                ;
+                """
+            trigger_block = self.unident(trigger_template).format(
+                trigger_name=trigger.name,
+                trigger_place=trigger.place,
+                table_name=trigger.table,
+                trigger_body='\n'.join(map(lambda body_line: '--  ' + body_line, trigger.body))
+            )
+            ddl_triggers.append(trigger_block)
+
         for data in self.schema.data[:]:
             data_line = re.sub("'now'", 'current_timestamp', data, flags=re.I)
             # print(data_line)
@@ -241,23 +313,49 @@ class PysdunPgsql:
         prescript = self.unident(prescript_template).format(
             file_encoding=file_encoding,
             client_encoding=pgsql_encoding,
-            master='postgres', # may be 'template1'
+            master='postgres',  # may be 'template1'
             db_host=self.schema.host,
             db_user='postgres',
             db_password=self.schema.password,
             db_alias=self.schema.alias,
         )
-        f = codecs.open(filename, 'w', encoding=file_encoding)
-        try:
-            f.write(prescript)
 
-            for item in lines:
-                value = item
-                value = self.ugly_patch_replace_offset(value)
-                f.write(value + ';\n')
-            f.write('/* --- */\n')
-            for item in self.schema.data:
-                f.write(item + '\n')
+        # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+        filename_pair = path.splitext(filename)
+        filename_file = filename_pair[0]
+        filename_ext = filename_pair[1]
+
+        fn_main = filename
+        fn_triggers = filename_file + '-triggers' + filename_ext
+        fn_data = filename_file + '-data' + filename_ext
+        fn_sp_template = '{0}-sp-{{stored_procedure_name}}.sql'.format(filename_file, filename_ext)
+        fn_batch = filename_file + '.cmd'
+
+        file_lines = []
+        crlf = '\n'
+        file_lines.append(prescript)
+        file_lines.extend(sorted(ddl_sequences))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_domains))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_tables))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_indices))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_uk))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_pk))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_fk))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_views))
+                          
+        f = codecs.open(fn_main, 'w', encoding=file_encoding)
+        try:
+            for file_line in file_lines:
+                value = self.ugly_patch_replace_offset(file_line)
+                f.write(value + '\n')
             f.write('/* EOF */\n')
         finally:
             f.close()
@@ -270,98 +368,123 @@ class PysdunPgsql:
         if os.path.isfile(tr_filename):
             os.remove(tr_filename)
 
-        trigger_lines = []
-
-        for tr in self.schema.triggers:
-            trigger_template = """
-                create or replace function trf_{trigger_name}() returns opaque as
-                $$
-                  /*
-                  {trigger_body}
-                  */
-                $$
-                language 'plpgsql';
-
-                create trigger {trigger_name} {trigger_place} on {table_name}
-                  for each row execute procedure trf_{trigger_name}
-                ;
-                """
-            trigger_block = self.unident(trigger_template).format(
-                trigger_name=tr.name,
-                trigger_place=tr.place,
-                table_name=tr.table,
-                trigger_body='\n'.join(map(lambda body_line: '  -- ' + body_line, tr.body))
-            )
-            trigger_lines.append(trigger_block)
-
         f = open(tr_filename, 'w')
         try:
-            f.write(prescript)
-            f.write(trigger_lines)
+            f.write('\n'.join(sorted(ddl_triggers[:])))
             f.write('/* EOF */\n')
         finally:
             f.close()
 
-        #
-        for sp in self.schema.procedures:
-            procedure_template = """
-                --
-                -- create type t_{function_name} as (
-                --   col1 int,
-                --   col2 int
-                -- );
-                --
-
-                create or replace function {function_name}
-                -- returns setof t_{function_name}
-                -- returns setof {}_view
-                -- returns table (col1 int, col2 text)
-                -- returns setof record
-                -- returns opaque
-                -- returns void
-                as
-                $$
-                --  declare
-                --    r {function_name}_view%rowtype;
-                --    r t_{function_name}%rowtype;
-                  /*
-                  {function_body}
-                  */
-                $$
-                language 'plpgsql'
-                immutable /* immutable | stable */
-                ;
-                """
-
-            procedure_block = self.unident(procedure_template).format(
-                function_name=sp.name,
-                function_body='\n'.join(map(lambda body_line: '  -- ' + body_line, sp.body))
-            )
-
-            sp_filename = filename_file + '-sp-' + sp.name + filename_ext
-            if os.path.isfile(sp_filename):
-                sp_filename += '~'
-            if os.path.isfile(sp_filename):
-                os.remove(sp_filename)
-            f = open(sp_filename, 'w')
+        # # #
+        # # #
+        # # #
+        for procedure_name in ddl_stored_procedures:
+            procedure_item = ddl_stored_procedures[procedure_name]
+            fn_sp = fn_sp_template.format(stored_procedure_name=procedure_name)
+            if os.path.isfile(fn_sp):
+                fn_sp += '~'
+            if os.path.isfile(fn_sp):
+                os.remove(fn_sp)
+            f = codecs.open(fn_sp, 'w', encoding=file_encoding)
             try:
-                f.write(procedure_block)
+                f.write('-- {} \n'.format(file_encoding))
+                f.write(procedure_item)
                 f.write('/* EOF */\n')
             finally:
                 f.close()
 
-        data_filename = filename_file + '-data' + filename_ext
-        if os.path.isfile(data_filename):
-            data_filename += '~'
-        if os.path.isfile(data_filename):
-            os.remove(data_filename)
-        f = open(data_filename, 'w')
+
+        # # #
+        # # #
+        # # #
+        f = codecs.open(fn_data, 'w', encoding=file_encoding)
         try:
-            for sql_data_item in sql_data[:]:
-                f.write(sql_data_item)
+            f.write('-- {} \n'.format(file_encoding))
+            for data_item in sql_data[:]:
+                f.write(data_item + '\n')
             f.write('/* EOF */\n')
         finally:
             f.close()
+
+        # # #
+        # # #
+        # # #
+        batch_template = """
+            @echo off
+            rem
+            rem {file_encoding}
+            rem
+
+            cls
+
+            set PATH=%PATH%;C:\\Program Files\\PostgreSQL\\9.1\\bin
+            rem set HOME=C:\\home\\ark
+            rem set PATH=%PATH%;%HOME%\\bin\\pgAdmin III 1.20.0
+
+            rem set PGOPTIONS=--client-min-messages=warning
+            rem # [i] debug w/echo: -e
+            rem # [w] Don't use &PGHOST & $PGUSER variables here: -h %PGHOST% -U %PGUSER% -n -v ON_ERROR_STOP=1
+            rem set PGPSQL_OPTS=-n -v ON_ERROR_STOP=1 -q
+            set PGPSQL_OPTS=-v ON_ERROR_STOP=1
+
+            set PGPSQL_EXE="psql.exe"
+            set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
+
+            set PGCLIENTENCODING=utf-8
+            rem set PGCLIENTENCODING=WIN
+            rem set PGCLIENTENCODING=WIN1251
+
+            set PGHOST={db_host}
+            set PGHOSTADDR={db_host}
+            set PGUSER={db_user}
+            set PGPASSWORD={db_password}
+
+            set DB414={db_alias}
+
+            %PGPSQL% -d postgres -c "drop database %DB414%"
+            %PGPSQL% -d postgres -c "create database %DB414%"
+            %PGPSQL% -d %DB414% -c "create language 'plpgsql'"
+            %PGPSQL% -d %DB414% -f {script_name_main}
+            {script_procedure}
+            %PGPSQL% -d %DB414% -f {script_name_triggers}
+            rem %PGPSQL% -d %DB414% -f {script_name_data}
+
+            echo "FIN: 9.1/4.1.8 %PGHOST%::%DB414%"
+            pause
+
+            rem echo "OK"
+            pause
+            """
+
+        f = codecs.open(fn_batch, 'w', encoding=file_encoding)
+        try:
+            procedure_block = []
+            for procedure_name in ddl_stored_procedures:
+                procedure_block.append(
+                    "%PGPSQL% -d %DB414% -f {sqlscript}".format(
+                        sqlscript=path.basename(fn_sp_template.format(stored_procedure_name=procedure_name))
+                    )
+                )
+
+            f.write(
+                self.unident(batch_template).format(
+                    file_encoding=file_encoding,
+                    db_host=self.schema.host,
+                    db_user='postgres',
+                    db_password=self.schema.password,
+                    db_alias=self.schema.alias,
+                    script_name_main=path.basename(fn_main),
+                    script_name_triggers=path.basename(fn_triggers),
+                    script_name_data=path.basename(fn_data),
+                    script_procedure='\n'.join(procedure_block)
+                )
+            )
+        finally:
+            f.close()
+
+
+
+
 
 #
 #
