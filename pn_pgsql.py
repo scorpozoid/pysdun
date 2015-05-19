@@ -80,7 +80,7 @@ class PysdunPgsql:
         return data_type
 
     def export(self, filename):
-        ddl_header = []
+        # ddl_header = []
         ddl_sequences = []
         ddl_domains = []
         ddl_tables = []
@@ -215,62 +215,62 @@ class PysdunPgsql:
             ddl_views.append(view + ';')
 
         #
+        function_template = """
+            --
+            -- create type t_{function_name} as (
+            --   col1 int,
+            --   col2 int
+            -- );
+            --
+
+            create or replace function {function_name}()
+            returns void
+            -- returns setof t_{function_name}
+            -- returns setof {function_name}_view
+            -- returns table (col1 int, col2 text)
+            -- returns setof record
+            -- returns opaque
+            as
+            $$
+            begin
+            --  declare
+            --    r {function_name}_view%rowtype;
+            --    r t_{function_name}%rowtype;
+            --  /*
+            {function_body}
+            --  */
+            end
+            $$
+            language 'plpgsql'
+            immutable /* immutable | stable */
+            ;
+            """
         for procedure in self.schema.procedures:
-            function_template = """
-                --
-                -- create type t_{function_name} as (
-                --   col1 int,
-                --   col2 int
-                -- );
-                --
-
-                create or replace function {function_name}()
-                returns void
-                -- returns setof t_{function_name}
-                -- returns setof {function_name}_view
-                -- returns table (col1 int, col2 text)
-                -- returns setof record
-                -- returns opaque
-                as
-                $$
-                begin
-                --  declare
-                --    r {function_name}_view%rowtype;
-                --    r t_{function_name}%rowtype;
-                --  /*
-                {function_body}
-                --  */
-                end
-                $$
-                language 'plpgsql'
-                immutable /* immutable | stable */
-                ;
-                """
-
             function_block = self.unident(function_template).format(
                 function_name=procedure.name,
                 function_body='\n'.join(map(lambda body_line: '--  ' + body_line, procedure.body))
             )
-
             ddl_stored_procedures[procedure.name] = function_block
 
-        for trigger in self.schema.triggers:
-            trigger_template = """
-                create or replace function trf_{trigger_name}() returns trigger /* trigger | opaque */
-                as
-                $$
-                begin
-                --  /*
-                {trigger_body}
-                --  */
-                end
-                $$
-                language 'plpgsql';
+        trigger_template = """
+            create or replace function trf_{trigger_name}() returns trigger /* trigger | opaque */
+            as
+            $$
+            begin
+            --  /*
+            {trigger_body}
+            --  */
+            end
+            $$
+            language 'plpgsql';
 
-                create trigger {trigger_name} {trigger_place} on {table_name}
-                  for each row execute procedure trf_{trigger_name}()
-                ;
-                """
+            create trigger {trigger_name} {trigger_place} on {table_name}
+              for each row execute procedure trf_{trigger_name}()
+            ;
+            """
+        for trigger in self.schema.triggers:
+            if 'autoinc' in trigger.name:
+                continue
             trigger_block = self.unident(trigger_template).format(
                 trigger_name=trigger.name,
                 trigger_place=trigger.place,
@@ -447,7 +447,7 @@ class PysdunPgsql:
             %PGPSQL% -d %DB414% -f {script_name_main}
             {script_procedure}
             %PGPSQL% -d %DB414% -f {script_name_triggers}
-            rem %PGPSQL% -d %DB414% -f {script_name_data}
+            %PGPSQL% -d %DB414% -f {script_name_data}
 
             echo "FIN: 9.1/4.1.8 %PGHOST%::%DB414%"
             pause

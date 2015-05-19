@@ -220,7 +220,7 @@ class PysdunMssql:
 
         #
         for view in self.schema.views[:]:
-            ddl_views.append(view)
+            ddl_views.append(view + '\n' + 'go\n')
 
         #
         for procedure in self.schema.procedures:
@@ -259,6 +259,8 @@ class PysdunMssql:
 
         #
         for trigger in self.schema.triggers[:]:
+            if 'autoinc' in trigger.name:
+                continue
             ddl_trigger_template = """
                 /* --- */
                 if exists(
@@ -278,11 +280,18 @@ class PysdunMssql:
                 go
                 """
 
+            # mssql can't produce before insert\update triggers
+            trigger_place = trigger.place
+
+            trigger_place = trigger_place.replace('before insert', 'after insert')
+            trigger_place = trigger_place.replace('before update', 'after update')
+            trigger_place = trigger_place.replace('before delete', 'instead of delete')
+
             ddl_triggers.append(
                 self.unident(ddl_trigger_template).format(
                     trigger_name=trigger.name,
                     table_name=trigger.table,
-                    trigger_place=trigger.place,
+                    trigger_place=trigger_place,
                     trigger_body='\n'.join(map(lambda body_line: '  -- ' + body_line, trigger.body))
                 )
             )
@@ -292,7 +301,6 @@ class PysdunMssql:
             data_line = re.sub("'now'", 'getdate()', data, flags=re.I)
             # print(data_line)
             sql_data.append(data_line)
-
 
         # if not self.schema.host:
         #     self.schema.host = '127.0.0.1'
@@ -368,25 +376,29 @@ class PysdunMssql:
         f = codecs.open(fn_main, 'w', encoding=file_encoding)
         try:
             f.write('-- {} \n'.format(file_encoding))
-            f.write('\n'.join(ddl_header[:]))
+            f.write('\n'.join(ddl_header))  # ! not sorted
             # mssql-2012 or higher - f.write('\n'.join(sorted(ddl_sequences)))
             f.write('\n'.join(sorted(ddl_udt)))
             f.write(crlf)
             f.write(go)
-            f.write('\n'.join(sorted(ddl_tables[:])))
+            f.write('\n'.join(sorted(ddl_tables)))
             f.write(crlf)
-            f.write('\n'.join(sorted(ddl_indices[:])))
-            f.write(crlf)
-            f.write('\n'.join(sorted(ddl_pk[:])))
-            f.write(crlf)
-            f.write('\n'.join((ddl_uk[:])))
-            f.write(crlf)
-            f.write('\n'.join((ddl_fk[:])))
             f.write(go)
+            f.write('\n'.join(sorted(ddl_indices)))
             f.write(crlf)
-            f.write('\n'.join(sorted(ddl_views[:])))
             f.write(go)
+            f.write('\n'.join(sorted(ddl_pk)))
             f.write(crlf)
+            f.write(go)
+            f.write('\n'.join(sorted(ddl_uk)))
+            f.write(crlf)
+            f.write(go)
+            f.write('\n'.join(sorted(ddl_fk)))
+            f.write(crlf)
+            f.write(go)
+            f.write('\n'.join(sorted(ddl_views)))
+            f.write(crlf)
+            f.write(go)
             f.write('/* EOF */\n')
         finally:
             f.close()
