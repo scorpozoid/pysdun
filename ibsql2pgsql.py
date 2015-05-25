@@ -8,7 +8,7 @@
 # 2015.04.21 [+] OOP style
 #            [+] Python code style
 #            [+] Triggers & stored procedures processing
-# 2013.11.06 [+] Initial release, based on ibsql2mssql.py
+# 2013.11.06 [+] Initial release, based on ibsql2pgsql.py
 #                for support serial autoincrement
 #
 #
@@ -103,18 +103,18 @@ def main(argv):
 if __name__ == "__main__":
     v_argv = (
         "-i",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-ib.sql",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/dfpostdb/ib/dfpostdb-ib.sql",
         "-o",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-pgsql.sql"
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/dfpostdb/pgsql/dfpostdb-pgsql.sql"
     )
-
-    # v_argv = (
-    #    "-i",
-    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/SpectrDB.sql",
-    #    #"/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB.sql",
-    #    "-o",
-    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-pgsql.sql"
-    # )
-
     main(v_argv)
+
+    v_argv = (
+        "-i",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/spectrdb/ib/spectrdb-ib.sql",
+        "-o",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/spectrdb/pgsql/spectrdb-pgsql.sql"
+    )
+    main(v_argv)
+
     #main(sys.argv[1:])

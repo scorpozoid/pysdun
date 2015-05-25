@@ -71,18 +71,19 @@ def main(argv):
 if __name__ == "__main__":
     v_argv = (
         "-i",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-ib.sql",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/dfpostdb/ib/dfpostdb-ib.sql",
         "-o",
-        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/db/dfpostdb-mssql.sql"
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/dfpostdb/mssql/dfpostdb-mssql.sql"
     )
-
-    # v_argv = (
-    #    "-i",
-    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/SpectrDB.sql",
-    #    #"/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB.sql",
-    #    "-o",
-    #    "/home/ark/devel/nig/dfpost/xe3/trunk/DFLib/DataBase/dfPostDB(IB)/dfPostDB-pgsql.sql"
-    # )
-
     main(v_argv)
+
+    v_argv = (
+        "-i",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/spectrdb/ib/spectrdb-ib.sql",
+        "-o",
+        "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DatabaseSrc/spectrdb/mssql/spectrdb-mssql.sql"
+    )
+    main(v_argv)
+
+
     # main(sys.argv[1:])
