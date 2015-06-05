@@ -43,6 +43,8 @@ set PGSCRIPT418TEST02=%PROJ418%\trunk\DFLib\DataBase\db\dfpostdb-pgsql-test-02.s
 
 python ibsql2pgsql.py -i %IBESCRIPT418% -o %PGSCRIPT418MAIN%
 
+exit /b
+
 rem # - 4.1.9 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 set IBESCRIPT419=%PROJ419%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB.sql
 set PGSCRIPT419MAIN=%PROJ419%\trunk\DFLib\DataBase\dfPostDB(PGS)\dfpostdb-pgsql.sql
