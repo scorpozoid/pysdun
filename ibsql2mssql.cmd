@@ -18,8 +18,7 @@ rem # - 4.1.8 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 rem set IBESCRIPT=%PROJ%\trunk\DFLib\DataBase\dfPostDB(IB)\dfPostDB.sql
 set IBESCRIPT=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\ib\dfpostdb-ib.sql
 set MSGSCRIPTMAIN=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\mssql\dfpostdb-mssql.sql
-set MSGSCRIPTSP=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\mssql\dfpostdb-mssql-proc.sql
-set MSGSCRIPTTR=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\mssql\dfpostdb-mssql-triggers.sql
+
 set MSGSCRIPTTEST01=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\mssql\dfpostdb-mssql-test-01.sql
 set MSGSCRIPTTEST02=%PROJ%\trunk\DFLib\DataBase\DatabaseSrc\dfpostdb\mssql\dfpostdb-mssql-test-02.sql
 
