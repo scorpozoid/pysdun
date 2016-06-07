@@ -165,7 +165,7 @@ class IbeSchema(Schema):
                     dom_name = m.group(1)
                     data_type = m.group(2).strip()
                     data_type = strip_localization(data_type)
-                    autoinc = dom_name.endswith('_autoinc')
+                    autoinc = dom_name.endswith('_autoinc') or dom_name.endswith('sequence_t')
                     domain = Domain(dom_name, data_type, autoinc)
                     domains[dom_name] = domain
                 except:
