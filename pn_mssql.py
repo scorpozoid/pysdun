@@ -452,61 +452,61 @@ class PysdunMssql:
         finally:
             f.close()
 
-        # # #
-        # # #
-        # # #
-        isql = "sqlcmd -S %MSSQL_HOST% -U %MSSQL_USERNAME% -P %MSSQL_PASSWORD%"
-        batch_template = """
-            @echo off
-            rem
-            rem {file_encoding}
-            rem
+        # #
+        # #
+        # #
+        # isql = "sqlcmd -S %MSSQL_HOST% -U %MSSQL_USERNAME% -P %MSSQL_PASSWORD%"
+        # batch_template = """
+            # @echo off
+            # rem
+            # rem {file_encoding}
+            # rem
 
-            set MSSQL_USERNAME={db_user}
-            set MSSQL_HOST={db_host}
-            set MSSQL_PASSWORD={db_password}
-            rem 192.168.128.207 1Masterkey
+            # set MSSQL_USERNAME={db_user}
+            # set MSSQL_HOST={db_host}
+            # set MSSQL_PASSWORD={db_password}
+            # rem 192.168.128.207 1Masterkey
 
-            rem {sqlcmd} -Q "alter database {db_alias} set offline with rollback immediate"
-            rem {sqlcmd} -Q "alter database {db_alias} set online"
-            rem {sqlcmd} -i script.sql -o script.log
+            # rem {sqlcmd} -Q "alter database {db_alias} set offline with rollback immediate"
+            # rem {sqlcmd} -Q "alter database {db_alias} set online"
+            # rem {sqlcmd} -i script.sql -o script.log
 
-            {sqlcmd} -i {script_name_main}
-            {script_procedure}
-            {sqlcmd} -i {script_name_triggers}
-            {sqlcmd} -i {script_name_data}
+            # {sqlcmd} -i {script_name_main}
+            # {script_procedure}
+            # {sqlcmd} -i {script_name_triggers}
+            # {sqlcmd} -i {script_name_data}
 
-            rem bcp {db_alias}.dbo.job out "{db_alias}.txt" -c -T
-            rem echo "OK"
-            pause
-            """
+            # rem bcp {db_alias}.dbo.job out "{db_alias}.txt" -c -T
+            # rem echo "OK"
+            # pause
+            # """
 
-        f = codecs.open(fn_batch, 'w', encoding=file_encoding)
-        try:
-            procedure_block = []
-            for procedure_name in ddl_stored_procedures:
-                procedure_block.append(
-                    "{sqlcmd} -i {sqlscript}".format(
-                        sqlcmd=isql,
-                        sqlscript=path.basename(fn_sp_template.format(stored_procedure_name=procedure_name))
-                    )
-                )
+        # f = codecs.open(fn_batch, 'w', encoding=file_encoding)
+        # try:
+            # procedure_block = []
+            # for procedure_name in ddl_stored_procedures:
+                # procedure_block.append(
+                    # "{sqlcmd} -i {sqlscript}".format(
+                        # sqlcmd=isql,
+                        # sqlscript=path.basename(fn_sp_template.format(stored_procedure_name=procedure_name))
+                    # )
+                # )
 
-            f.write(
-                self.unident(batch_template).format(
-                    file_encoding=file_encoding,
-                    db_host=self.schema.host,
-                    db_user='sa',
-                    db_password=self.schema.password,
-                    db_alias=self.schema.alias,
-                    sqlcmd=isql,
-                    script_name_main=path.basename(fn_main),
-                    script_name_triggers=path.basename(fn_triggers),
-                    script_name_data=path.basename(fn_data),
-                    script_procedure='\n'.join(procedure_block)
-                )
-            )
-        finally:
-            f.close()
+            # f.write(
+                # self.unident(batch_template).format(
+                    # file_encoding=file_encoding,
+                    # db_host=self.schema.host,
+                    # db_user='sa',
+                    # db_password=self.schema.password,
+                    # db_alias=self.schema.alias,
+                    # sqlcmd=isql,
+                    # script_name_main=path.basename(fn_main),
+                    # script_name_triggers=path.basename(fn_triggers),
+                    # script_name_data=path.basename(fn_data),
+                    # script_procedure='\n'.join(procedure_block)
+                # )
+            # )
+        # finally:
+            # f.close()
 
 

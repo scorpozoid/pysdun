@@ -406,81 +406,81 @@ class PysdunPgsql:
         finally:
             f.close()
 
-        # # #
-        # # #
-        # # #
-        batch_template = """
-            @echo off
-            rem
-            rem {file_encoding}
-            rem
+        # #
+        # #
+        # #
+        # batch_template = """
+            # @echo off
+            # rem
+            # rem {file_encoding}
+            # rem
 
-            cls
+            # cls
 
-            set PATH=%PATH%;C:\\Program Files\\PostgreSQL\\9.1\\bin
-            rem set HOME=C:\\home\\ark
-            rem set PATH=%PATH%;%HOME%\\bin\\pgAdmin III 1.20.0
+            # set PATH=%PATH%;C:\\Program Files\\PostgreSQL\\9.1\\bin
+            # rem set HOME=C:\\home\\ark
+            # rem set PATH=%PATH%;%HOME%\\bin\\pgAdmin III 1.20.0
 
-            rem set PGOPTIONS=--client-min-messages=warning
-            rem # [i] debug w/echo: -e
-            rem # [w] Don't use &PGHOST & $PGUSER variables here: -h %PGHOST% -U %PGUSER% -n -v ON_ERROR_STOP=1
-            rem set PGPSQL_OPTS=-n -v ON_ERROR_STOP=1 -q
-            set PGPSQL_OPTS=-v ON_ERROR_STOP=1
+            # rem set PGOPTIONS=--client-min-messages=warning
+            # rem # [i] debug w/echo: -e
+            # rem # [w] Don't use &PGHOST & $PGUSER variables here: -h %PGHOST% -U %PGUSER% -n -v ON_ERROR_STOP=1
+            # rem set PGPSQL_OPTS=-n -v ON_ERROR_STOP=1 -q
+            # set PGPSQL_OPTS=-v ON_ERROR_STOP=1
 
-            set PGPSQL_EXE="psql.exe"
-            set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
+            # set PGPSQL_EXE="psql.exe"
+            # set PGPSQL=%PGPSQL_EXE% %PGPSQL_OPTS%
 
-            set PGCLIENTENCODING=utf-8
-            rem set PGCLIENTENCODING=WIN
-            rem set PGCLIENTENCODING=WIN1251
+            # set PGCLIENTENCODING=utf-8
+            # rem set PGCLIENTENCODING=WIN
+            # rem set PGCLIENTENCODING=WIN1251
 
-            set PGHOST={db_host}
-            set PGHOSTADDR={db_host}
-            set PGUSER={db_user}
-            set PGPASSWORD={db_password}
+            # set PGHOST={db_host}
+            # set PGHOSTADDR={db_host}
+            # set PGUSER={db_user}
+            # set PGPASSWORD={db_password}
 
-            set DB414={db_alias}
+            # set DB414={db_alias}
 
-            %PGPSQL% -d postgres -c "drop database %DB414%"
-            %PGPSQL% -d postgres -c "create database %DB414%"
-            %PGPSQL% -d %DB414% -c "create language 'plpgsql'"
-            %PGPSQL% -d %DB414% -f {script_name_main}
-            {script_procedure}
-            %PGPSQL% -d %DB414% -f {script_name_triggers}
-            %PGPSQL% -d %DB414% -f {script_name_data}
+            # %PGPSQL% -d postgres -c "drop database %DB414%"
+            # %PGPSQL% -d postgres -c "create database %DB414%"
+            # %PGPSQL% -d %DB414% -c "create language 'plpgsql'"
+            # %PGPSQL% -d %DB414% -f {script_name_main}
+            # {script_procedure}
+            # %PGPSQL% -d %DB414% -f {script_name_triggers}
+            # %PGPSQL% -d %DB414% -f {script_name_data}
 
-            echo "FIN: 9.1/4.1.8 %PGHOST%::%DB414%"
-            pause
+            # echo "FIN: 9.1/4.1.8 %PGHOST%::%DB414%"
+            # pause
 
-            rem echo "OK"
-            pause
-            """
+            # rem echo "OK"
+            # pause
+            # """
 
-        f = codecs.open(fn_batch, 'w', encoding=file_encoding)
-        try:
-            procedure_block = []
-            for procedure_name in ddl_stored_procedures:
-                procedure_block.append(
-                    "%PGPSQL% -d %DB414% -f {sqlscript}".format(
-                        sqlscript=path.basename(fn_sp_template.format(stored_procedure_name=procedure_name))
-                    )
-                )
+        # f = codecs.open(fn_batch, 'w', encoding=file_encoding)
+        # try:
+            # procedure_block = []
+            # for procedure_name in ddl_stored_procedures:
+                # procedure_block.append(
+                    # "%PGPSQL% -d %DB414% -f {sqlscript}".format(
+                        # sqlscript=path.basename(fn_sp_template.format(stored_procedure_name=procedure_name))
+                    # )
+                # )
 
-            f.write(
-                self.unident(batch_template).format(
-                    file_encoding=file_encoding,
-                    db_host=self.schema.host,
-                    db_user='postgres',
-                    db_password=self.schema.password,
-                    db_alias=self.schema.alias,
-                    script_name_main=path.basename(fn_main),
-                    script_name_triggers=path.basename(fn_triggers),
-                    script_name_data=path.basename(fn_data),
-                    script_procedure='\n'.join(procedure_block)
-                )
-            )
-        finally:
-            f.close()
+            # f.write(
+                # self.unident(batch_template).format(
+                    # file_encoding=file_encoding,
+                    # db_host=self.schema.host,
+                    # db_user='postgres',
+                    # db_password=self.schema.password,
+                    # db_alias=self.schema.alias,
+                    # script_name_main=path.basename(fn_main),
+                    # script_name_triggers=path.basename(fn_triggers),
+                    # script_name_data=path.basename(fn_data),
+                    # script_procedure='\n'.join(procedure_block)
+                # )
+            # )
+        # finally:
+            # f.close()
 
 
 
