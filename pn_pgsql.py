@@ -291,12 +291,18 @@ class PysdunPgsql:
             -- {file_encoding}
             set client_encoding to '{client_encoding}';
 
+            --
+            -- connect to tcp:postgresql://{{host}}:{{port}}/{{alias}} user {{username}} identified by {{password}};
+            --
             -- connect to tcp:postgresql://{db_host}:5432/{master} user {db_user} identified by {db_password};
             -- drop database {db_alias};
+            -- drop database {{alias}};
             -- disconnect;
-            -- create database {db_alias};
-
+            -- create database {{alias}};
+            --
             -- connect to tcp:postgresql://{db_host}:5432/{db_alias} user {db_user} identified by {db_password};
+            --
+            --
             """
 
         file_encoding_utf8 = 'utf-8'
