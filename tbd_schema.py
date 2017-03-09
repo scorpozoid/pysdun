@@ -3,6 +3,12 @@
 
 #
 
+#
+# 
+#
+#
+
+
 import sys
 import re
 import codecs
@@ -37,35 +43,45 @@ class TdbIndieSchema(Schema):
 
             self.predefine_domains()
             self.collect_base_types()
-            self.process_blocks()
+            #self.process_blocks()
 
         except IOError as er:
             print('Can\'t open the "{0}" file'.format(filename))
               
             
     def get_field_type(self, value):
+        #debug('GFT ' + value)
+        
         cLinkType = u'Ссылка'.lower()
         cFileType = u'Файл'.lower()
         cTextType = u'Символьное'.lower()
-        cStringType = u'Строка'.lower()
-        cFloatType = u'Численное'.lower()
-        cNumericType = u'Числовое'.lower()
+        cMemoTypeRu = u'М'.lower()
+        cMemoTypeEn = u'M'.lower()
+        cStringTypeRu = u'Строка'.lower()
+        cStringTypeCharRu = u'С'.lower()
+        cStringTypeCharEn = u'C'.lower()
+        cNumericType1 = u'Числовое'.lower()
+        cNumericType2 = u'Численное'.lower()
+        cNumericType3 = u'N'.lower()
         cIntType = u'Целое'.lower()
         cTimestampType = u'Дата, время'.lower().replace(' ', '')
         cDateType = u'Дата'.lower()
+        cDateTypeChar = u'D'.lower()
         cTimeType = u'Время'.lower()
         cReferenceType = u'БД'.lower()
         cGeoType = u'Град. мин. сек'.lower().replace(' ', '')
 
-        if cTextType == value or cStringType == value:
+        value = value.lower().replace(' ', '').replace('\t', '')
+
+        if value in (cTextType, cStringTypeRu, cStringTypeCharRu, cStringTypeCharEn, cMemoTypeRu, cMemoTypeEn):
             return 'text_t'
         elif cIntType == value:
             return 'int_t'
-        elif cFloatType == value or cNumericType == value:
+        elif value in (cNumericType1, cNumericType2, cNumericType3):
             return 'double_t'
         elif cTimeType == value:
             return 'time_t'
-        elif cDateType == value:
+        elif value in (cDateTypeChar, cDateType):
             return 'date_t'
         elif cTimestampType == value:
             return 'timestamp_t'
@@ -93,52 +109,150 @@ class TdbIndieSchema(Schema):
         self.domains.append(Domain('filename_t', 'varchar(1024)', False))
 
 
+    def get_dbt_code(self, value):
+
+        #print('get_dbt_code("' + value + '")')
+        #num = float(value)
+        #i, f = divmod(num, 1)
+        #return str(int(i * 100 + f * 10)).zfill(5)
+
+        #m = re.match('(\d+)\.?(\d+)', value, re.IGNORECASE)
+        #if m:
+        #    if 0 < len(m.groups()): 
+        #        dbtno = 100 * int(m.group(1))
+        #        if 1 < len(m.groups()): 
+        #            dbtno = dbtno + int(m.group(2))
+        #            dbtcode = str(dbtno).zfill(5)
+        
+        dbtcode = ''
+        value = value.replace('\t', '').replace(' ', '')
+        p = value.split('.')
+        p1 = 0
+        p2 = 0
+        p3 = 0
+        if 0 < len(p):
+            p1 = 10000 * int(p[0])
+            if 1 < len(p):
+                p2 = 100 * int(p[1])
+                if 2 < len(p):
+                    p3 = 10 * int(p[2])
+        dbtcode = str(p1 + p2 + p3).zfill(7)
+        return dbtcode
+        
+        
+    def add_field_type(self, table_name, field_name, field_type):
+        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (1)')
+        field_name = field_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (2)')
+        field_type = self.get_field_type(field_type)
+        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (3)')
+        if '<REF>' == field_type:
+            field_type = ''
+      
+        if '' <> field_type:
+            reftype_key = table_name + '::' + field_name
+            self.__base_types[reftype_key] = field_type
+            print('> ' + reftype_key + ' -> ' + field_type)
+
+
     def collect_base_types(self):
-      block = []
-      cur_tab_name = ''
-      cur_tab_no = ''
-      pre_tab_no = 0
-      for lineitem in self.__lines:
-          line = lineitem.strip().rstrip('\r').rstrip('\n')
-          print(line)
-          if line == "":
+        block = []
+        cur_tab_name = ''
+        cur_tab_no = 0
+        pre_tab_no = 0
+
+        #re_tbd_header_break = re.compile('==DBT#(\d+)', re.IGNORECASE)
+        re_tbd_header_break = re.compile('==DBT#(.*)', re.IGNORECASE)
+        
+        for lineitem in self.__lines:
+            line = lineitem.strip().rstrip('\r').rstrip('\n')
+            line = line.replace(u'…', '...')
+            line = line.replace('....', '...')
+            line = line.replace('... .', '...')
+          
+            if line.startswith('---- '):
+                continue
             
-              if 1 == len(block):
-                  if not block[0].isdigit():
-                      print ('NONDIGIT "' + block[0] + '"')
-                      block = []
+          
+            field_name = ''
+            field_type = ''
+            dbtcode = ''
+            break_tab_no = 0;
+            print(line)
+          
+            m = re_tbd_header_break.match(line)
+            if m is not None:
+                debug('DBT BREAK DETECTED (1)')
+                dbtcodepart = m.group(1)
+                dbtcode = self.get_dbt_code(dbtcodepart)
+                break_tab_no = int(dbtcode)
+                # debug('DBT BREAK DETECTED "' + dbtcode + '" (2)')
+        
+            if dbtcode != '':
+                if break_tab_no < cur_tab_no:
+                    debug('TABLE ENUMERATION MISMATCH (1)' + str(cur_tab_no) + ':' + str(break_tab_no))
+                if 3 < len(block):
+                    if '' == cur_tab_name:
+                        debug('TABLE NAME MISMATCH "' + line + '" (1)')
+                        continue
+                    field_name = block[2]
+                    field_type = block[3]
+                    debug('FIELD "' + cur_tab_name + '::' + field_name + '" ' + field_type + ' (1)')
+                    self.add_field_type(cur_tab_name, field_name, field_type)
+                    cur_tab_no = int(dbtcode)
+                else:
+                    #debug('CAPTION ONLY "' + line + '"')
+                    cur_tab_no = int(dbtcode)
+                continue
+        
+            elif line == '':
+            
+                if 1 == len(block):
+                    debug('*** if 1 == len(block):')
+                    dbtcodepart = block[0]
+                    temp_dbtcode = self.get_dbt_code(dbtcodepart)
+                    temp_tab_no = int(temp_dbtcode)
+                    if cur_tab_no <> temp_tab_no:
+                        debug('TABLE ENUMERATION MISMATCH (2) ' + str(cur_tab_no) + ':' + str(temp_tab_no))
+                    block = []
+                            
+                elif 2 == len(block):
+                    cur_tab_caption = block[0].replace('\t', ' ')
+                    cur_tab_name = block[1].lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+                    if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
+                        cur_tab_name = cur_tab_name[1:-1]
+                    self.__tab_names[cur_tab_no] = cur_tab_name
+                    print('TABLE :' + str(cur_tab_no) + ' ' + cur_tab_name + ' ' + cur_tab_caption + ' (1)')
+                    block = []
+                    
+                elif 3 == len(block):
+                    debug('*** elif 3 == len(block):')
+                    dbtcodepart = block[0]
+                    temp_dbtcode = self.get_dbt_code(dbtcodepart)
+                    temp_tab_no = int(temp_dbtcode)
+                    if cur_tab_no <> temp_tab_no:
+                        debug('TABLE ENUMERATION MISMATCH (3) ' + str(cur_tab_no) + ':' + str(temp_tab_no))
                       
-              if 3 == len(block):
-                  cur_tab_no = block[0]
-                  cur_tab_name = block[2].lower().replace(' ', '_').replace('\t', '_')
+                    cur_tab_caption = block[1]
+                    cur_tab_name = block[2]
+                    if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
+                        cur_tab_name = cur_tab_name[1:-1]
+                    self.__tab_names[cur_tab_no] = cur_tab_name
+                    print('TABLE :' + str(cur_tab_no) + ' ' + cur_tab_name + ' ' + cur_tab_caption + ' (1)')
+                    block = []
                   
-                  print('T' + cur_tab_no + ' ' + cur_tab_name)
-                  if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
-                      cur_tab_name = cur_tab_name[1:-1]
-                  self.__tab_names[int(cur_tab_no)] = cur_tab_name
-                  if int(cur_tab_no) == int(pre_tab_no + 1):
-                      pre_tab_no = int(cur_tab_no)
-                  else:
-                    print(u'TABLE ORDERING MISMATCH ' + cur_tab_no + ' ' + str(pre_tab_no))
-                  block = []
-                  
-              elif 3 < len(block):
-                field_name = block[2].lower().replace(' ', '_').replace('\t', '_')
-                field_type = block[3].lower().replace(' ', '').replace('\t', '')
-                
-                field_type = self.get_field_type(field_type)
-                
-                if '<REF>' == field_type:
-                  field_type = ''
-              
-                if '' <> field_type:
-                  reftype_key = cur_tab_name + '::' + field_name
-                  self.__base_types[reftype_key] = field_type
-                  print('> ' + reftype_key + ' -> ' + field_type)
-                
-                block = []
-          else:  
-              block.append(line)
+                elif 3 < len(block):
+                    if '' == cur_tab_name:
+                        debug('TABLE NAME MISMATCH "' + line + '" (2)')
+                        continue
+                    field_name = block[2]
+                    field_type = block[3]
+                    debug('FIELD "' + cur_tab_name + '::' + field_name + '" ' + field_type + '(2)')
+                    self.add_field_type(cur_tab_name, field_name, field_type)
+                    block = []
+
+            else:  
+                block.append(line)
 
 
     def process_blocks(self): 
