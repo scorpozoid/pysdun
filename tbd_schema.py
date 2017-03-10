@@ -34,6 +34,7 @@ class TdbIndieSchema(Schema):
         self.__current_table_code = ''
         self.__base_types = {}
         self.__tab_names = {}
+        self.__uk_keys = {}
         self.__lines = []
         self.load(filename);
         
@@ -413,12 +414,20 @@ class TdbIndieSchema(Schema):
             ref_field_list = [field_name]
             self.__current_table.add_fk(fk_key_name, field_list, ref_table_name, ref_field_list, 'on update cascade', 'on delete cascade')
 
+
+    
+            #uk_key_name = 'pk_' + ref_table_name + '_' + ref_field_name;
+            #__uk_keys
+            
+            
+            
+
         if '' == ref_table_name:
             debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + field_type + ' ')
         else:
             debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + field_type + ' (' + ref_table_name + ':' + ref_field_name + ')')
                                                          
-        self.__current_table.add_field(field_name, field_type, False, field_caption)
+        self.__current_table.add_field(field_name, field_type, True, field_caption)
         self.descriptionary.addfield(self.__current_table.name, field_name, field_caption)
         
                 

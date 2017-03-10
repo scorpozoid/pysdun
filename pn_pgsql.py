@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#!/usr/bin/python
+# -*- coding: utf-8 -*- 
 
 import re
 import codecs
@@ -135,14 +135,14 @@ class PysdunPgsql:
                                 data_type = ''
                                 not_null = ''
                         break
-                try:
-                    field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
-                except:
-                    print('error:' + table_name + ':' + field.name + ' (' + data_type + ')' + ' ' + default + ' ' + serial)
-                    #print(serial)
-                    #print(data_type)
-                    #print(not_null)
-                    #print(default)
+                
+                field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
+                        
+                #try:
+                #    field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
+                #except:
+                #    print('error:' + table_name + ':' + field.name + ' (' + data_type + ')' + ' ' + default + ' ' + serial + ' ' + not_null)
+                    
                 field_item = ibe_ddl.strip_statement(field_item)
 
                 field_list.append(field_item)
