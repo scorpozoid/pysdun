@@ -141,18 +141,18 @@ class TdbIndieSchema(Schema):
         
         
     def add_field_type(self, table_name, field_name, field_type):
-        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (1)')
+        #debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (1)')
         field_name = field_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
-        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (2)')
+        #debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (2)')
         field_type = self.get_field_type(field_type)
-        debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (3)')
+        #debug('AFT ' + table_name + ' ' + field_name + ' ' + field_type + ' (3)')
         if '<REF>' == field_type:
             field_type = ''
       
         if '' <> field_type:
             reftype_key = table_name + '::' + field_name
             self.__base_types[reftype_key] = field_type
-            print('> ' + reftype_key + ' -> ' + field_type)
+            #debug('> ' + reftype_key + ' -> ' + field_type)
 
 
     def collect_base_types(self):
@@ -172,7 +172,6 @@ class TdbIndieSchema(Schema):
           
             if line.startswith('---- '):
                 continue
-            
           
             field_name = ''
             field_type = ''
@@ -182,7 +181,113 @@ class TdbIndieSchema(Schema):
           
             m = re_tbd_header_break.match(line)
             if m is not None:
-                debug('DBT BREAK DETECTED (1)')
+                #debug('DBT BREAK DETECTED (1)')
+                dbtcodepart = m.group(1)
+                dbtcode = self.get_dbt_code(dbtcodepart)
+                break_tab_no = int(dbtcode)
+                # debug('DBT BREAK DETECTED "' + dbtcode + '" (2)')
+        
+            if dbtcode != '':
+                if break_tab_no < cur_tab_no:
+                    debug('TABLE ENUMERATION MISMATCH (1)' + str(cur_tab_no) + ':' + str(break_tab_no))
+                    return
+                if 3 < len(block):
+                    if '' == cur_tab_name:
+                        debug('TABLE NAME MISMATCH "' + line + '" (1)')
+                        return
+                    field_name = block[2]
+                    field_type = block[3]
+                    #debug('FIELD "' + cur_tab_name + '::' + field_name + '" ' + field_type + ' (1)')
+                    self.add_field_type(cur_tab_name, field_name, field_type)
+                    cur_tab_no = int(dbtcode)
+                else:
+                    #debug('CAPTION ONLY "' + line + '"')
+                    cur_tab_no = int(dbtcode)
+                continue
+        
+            elif line == '':
+            
+                if 1 == len(block):
+                    #debug('*** if 1 == len(block):')
+                    dbtcodepart = block[0]
+                    temp_dbtcode = self.get_dbt_code(dbtcodepart)
+                    temp_tab_no = int(temp_dbtcode)
+                    if cur_tab_no <> temp_tab_no:
+                        debug('TABLE ENUMERATION MISMATCH (2) ' + str(cur_tab_no) + ':' + str(temp_tab_no))
+                        return
+                    block = []
+                            
+                elif 2 == len(block):
+                    cur_tab_caption = block[0].replace('\t', ' ')
+                    cur_tab_name = block[1].lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+                    if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
+                        cur_tab_name = cur_tab_name[1:-1]
+                    if cur_tab_name in self.__tab_names.values():
+                        debug('TABLE NAME DUPE "' + cur_tab_name + '"')
+                        return
+                    self.__tab_names[cur_tab_no] = cur_tab_name
+                    #debug('TABLE :' + str(cur_tab_no) + ' ' + cur_tab_name + ' ' + cur_tab_caption + ' (1)')
+                    block = []
+                    
+                elif 3 == len(block):
+                    #debug('*** elif 3 == len(block):')
+                    dbtcodepart = block[0]
+                    temp_dbtcode = self.get_dbt_code(dbtcodepart)
+                    temp_tab_no = int(temp_dbtcode)
+                    if cur_tab_no <> temp_tab_no:
+                        debug('TABLE ENUMERATION MISMATCH (3) ' + str(cur_tab_no) + ':' + str(temp_tab_no))
+                        return
+                      
+                    cur_tab_caption = block[1]
+                    cur_tab_name = block[2]
+                    if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
+                        cur_tab_name = cur_tab_name[1:-1]
+                    self.__tab_names[cur_tab_no] = cur_tab_name
+                    #debug('TABLE :' + str(cur_tab_no) + ' ' + cur_tab_name + ' ' + cur_tab_caption + ' (1)')
+                    block = []
+                  
+                elif 3 < len(block):
+                    if '' == cur_tab_name:
+                        debug('TABLE NAME MISMATCH "' + line + '" (2)')
+                        return
+                    field_name = block[2]
+                    field_type = block[3]
+                    #debug('FIELD "' + cur_tab_name + '::' + field_name + '" ' + field_type + '(2)')
+                    self.add_field_type(cur_tab_name, field_name, field_type)
+                    block = []
+
+            else:  
+                block.append(line)
+
+
+    def process_blocks(self): 
+        block = []
+        cur_tab_name = ''
+        cur_tab_no = 0
+        pre_tab_no = 0
+        table = None;
+
+        #re_tbd_header_break = re.compile('==DBT#(\d+)', re.IGNORECASE)
+        re_tbd_header_break = re.compile('==DBT#(.*)', re.IGNORECASE)
+        
+        for lineitem in self.__lines:
+            line = lineitem.strip().rstrip('\r').rstrip('\n')
+            line = line.replace(u'…', '...')
+            line = line.replace('....', '...')
+            line = line.replace('... .', '...')
+          
+            if line.startswith('---- '):
+                continue
+          
+            field_name = ''
+            field_type = ''
+            dbtcode = ''
+            break_tab_no = 0;
+            #print(line)
+          
+            m = re_tbd_header_break.match(line)
+            if m is not None:
+                #debug('DBT BREAK DETECTED (1)')
                 dbtcodepart = m.group(1)
                 dbtcode = self.get_dbt_code(dbtcodepart)
                 break_tab_no = int(dbtcode)
@@ -208,7 +313,7 @@ class TdbIndieSchema(Schema):
             elif line == '':
             
                 if 1 == len(block):
-                    debug('*** if 1 == len(block):')
+                    #debug('*** if 1 == len(block):')
                     dbtcodepart = block[0]
                     temp_dbtcode = self.get_dbt_code(dbtcodepart)
                     temp_tab_no = int(temp_dbtcode)
@@ -221,12 +326,15 @@ class TdbIndieSchema(Schema):
                     cur_tab_name = block[1].lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
                     if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
                         cur_tab_name = cur_tab_name[1:-1]
+                    if cur_tab_name in self.__tab_names.values():
+                        debug('TABLE NAME DUPE "' + cur_tab_name + '"')
+                        return
                     self.__tab_names[cur_tab_no] = cur_tab_name
                     print('TABLE :' + str(cur_tab_no) + ' ' + cur_tab_name + ' ' + cur_tab_caption + ' (1)')
                     block = []
                     
                 elif 3 == len(block):
-                    debug('*** elif 3 == len(block):')
+                    #debug('*** elif 3 == len(block):')
                     dbtcodepart = block[0]
                     temp_dbtcode = self.get_dbt_code(dbtcodepart)
                     temp_tab_no = int(temp_dbtcode)
@@ -255,7 +363,7 @@ class TdbIndieSchema(Schema):
                 block.append(line)
 
 
-    def process_blocks(self): 
+    def process_blocks_temp(self): 
 
         block = []
         cur_tab_name = ''
