@@ -81,6 +81,7 @@ class TdbIndieSchema(Schema):
 
     def get_associated_domain(self, value):
         #debug('GFT ' + value)
+        value = self.fmt_fld_type(value)
         
         cLinkType = self.fmt_fld_type(u'Ссылка')
         cFileType = self.fmt_fld_type(u'Файл') 
@@ -104,38 +105,58 @@ class TdbIndieSchema(Schema):
         cReferenceType2 = self.fmt_fld_type(u'@@DBT') 
         cGeoType1 = self.fmt_fld_type(u'Град. мин. сек') 
         cGeoType2 = self.fmt_fld_type(u'Град. мин. сек') 
+        
+        cDegreeType = self.fmt_fld_type(u'Град.') 
+        cColorArrayType = self.fmt_fld_type(u'Массив цветов')
+        cLineKindArrayType = self.fmt_fld_type(u'Массив типов линий')
+        
+        cArray = self.fmt_fld_type(u'Массив')
 
-        timestamp_type_list = [cTimestampType1, cTimestampType2, cTimestampType3]
-        date_type_list = [cDateTypeChar, cDateType]
-        numeric_type_list = [cNumericType1, cNumericType2, cNumericType3]
-        text_type_list = [cTextType, cStringTypeRu, cStringTypeCharRu, cStringTypeCharEn, cMemoTypeRu, cMemoTypeEn]
-        geo_type_list = [cGeoType1, cGeoType2]
+        timestamp_type_list = (cTimestampType1, cTimestampType2, cTimestampType3)
+        date_type_list = (cDateTypeChar, cDateType)
+        numeric_type_list = (cNumericType1, cNumericType2, cNumericType3)
+        text_type_list = (cTextType, cStringTypeRu, cStringTypeCharRu, cStringTypeCharEn, cMemoTypeRu, cMemoTypeEn)
+        geo_type_list = (cGeoType1, cGeoType2)
         #print(tslist)
 
-        if value in text_type_list:
-            return 'text_t'
-        elif cIntType == value:
+        if cIntType == value:
+            #debug('GFT ' + value + ' >> ' + 'int_t')
             return 'int_t'
-        elif value in numeric_type_list:
-            return 'double_t'
         elif cTimeType == value:
             return 'time_t'
+        elif cLinkType == value:
+            return 'filename_t'
+        elif cDegreeType == value:
+            return 'degree_t'
+        elif cColorArrayType == value:
+            return 'color_array_t'
+        elif cLineKindArrayType == value:
+            return 'line_kind_array_t'
+        elif cArray == value:
+            return 'array_t'
+        elif value in text_type_list:
+            #debug('GFT ' + value + ' >> ' + 'text_t')
+            return 'text_t'
+        elif value in numeric_type_list:
+            #debug('GFT ' + value + ' >> ' + 'double_t')
+            return 'double_t'
         elif value in date_type_list:
+            #debug('GFT ' + value + ' >> ' + 'date_t')
             return 'date_t'
         elif value in timestamp_type_list:
             return 'timestamp_t'
-        elif value.startswith(cFileType):
-            return 'file_t'
-        elif cLinkType == value:
-            return 'filename_t'
         elif value in geo_type_list:
             return 'lla_t'
+        elif value.startswith(cFileType):
+            return 'file_t'
+        elif value.startswith(cReferenceType1) or value.startswith(cReferenceType2):
+            debug('GFT ' + value + ' >> ' + '<<ref>>')
+            return '<<ref>>'
         elif 'user_id_t' == value:
             return 'user_id_t'
         elif 'database_id_t' == value:
             return 'database_id_t'
-        elif value.startswith(cReferenceType1) or value.startswith(cReferenceType2):
-            return '<REF>'
+            
         else:
             return ''
       
@@ -148,11 +169,15 @@ class TdbIndieSchema(Schema):
         self.domains.append(Domain('time_t', 'time', False))
         self.domains.append(Domain('date_t', 'date', False))
         self.domains.append(Domain('lla_t', 'varchar(128)', False))
-        self.domains.append(Domain('file_t', 'blob', False))
+        self.domains.append(Domain('file_t', 'varchar(1024)', False))
         self.domains.append(Domain('filename_t', 'varchar(1024)', False))
-        self.domains.append(Domain('user_id_t', 'text', False))
-        self.domains.append(Domain('database_id_t', 'text', False))
-
+        self.domains.append(Domain('user_id_t', 'varchar(1024)', False))
+        self.domains.append(Domain('database_id_t', 'varchar(1024)', False))
+        self.domains.append(Domain('degree_t', 'double precision', False))
+        self.domains.append(Domain('color_array_t', 'varchar(1024)', False))
+        self.domains.append(Domain('line_kind_array_t', 'varchar(1024)', False))
+        self.domains.append(Domain('array_t', 'varchar(1024)', False))
+        
 
     def get_dbt_code(self, value):
 
@@ -188,12 +213,12 @@ class TdbIndieSchema(Schema):
     def add_field_type(self, table_name, field_name, field_type):
         table_name = self.fmt_tab_name(table_name)
         field_name = self.fmt_fld_name(field_name)
-        field_type = self.get_associated_domain(field_type)
-        if '<REF>' == field_type:
-            field_type = ''
-        if '' <> field_type:
+        domain = self.get_associated_domain(field_type)
+        if '<<ref>>' == domain:
+            domain = ''
+        if '' <> domain:
             reftype_key = table_name + '::' + field_name
-            self.__base_types[reftype_key] = field_type
+            self.__base_types[reftype_key] = field_type # YES! ..  = field_type, not  = domain
             #debug('> ' + reftype_key + ' -> ' + field_type)
 
 
@@ -256,24 +281,25 @@ class TdbIndieSchema(Schema):
                         print(block)
                         return
                     
-                    field_name = block[2].lower()
-                    field_type = block[3]
+                    field_name = self.fmt_fld_name(block[2])
+                    field_type = self.fmt_fld_type(block[3])
                     
                     if field_name in cur_field_names:
                         debug('DUPLICATE FIELD NAME "' + cur_tab_name + '::' + field_name + '" (1)')
                         return
                     cur_field_names.append(field_name)
                     
-                    self.add_field_type(cur_tab_name, field_name, field_type)
-                    
                     domain = self.get_associated_domain(field_type);
-                    if '<REF>' == domain:
+                    if '<<ref>>' == domain:
                         if (6 > len(block)):
                             print(block)
                             debug('NOT ENOUGHT REFERENCE TABLE! (1)')
+                            return
                     else:
+                        self.add_field_type(cur_tab_name, field_name, field_type)
                         field_type = self.get_field_type(cur_tab_name, field_name)
-                    debug('FIELD: ' + cur_tab_name + '::' + field_name + ' [' + field_type + '] (1)')
+                        domain = self.get_associated_domain(field_type);
+                        debug('FIELD: ' + cur_tab_name + '::' + field_name + ' [' + domain + '] ' + field_type + ' (1)')
                     
                     block = []
                 #else:
@@ -346,25 +372,25 @@ class TdbIndieSchema(Schema):
                         print(block)
                         return
                         
-                    field_name = block[2].lower()
-                    field_type = block[3]
+                    field_name = self.fmt_fld_name(block[2])
+                    field_type = self.fmt_fld_type(block[3])
                     
                     if field_name in cur_field_names:
                         debug('DUPLICATE FIELD NAME "' + cur_tab_name + '::' + field_name + '" (2)')
                         return
                     cur_field_names.append(field_name)
 
-                    self.add_field_type(cur_tab_name, field_name, field_type)
-                    
                     domain = self.get_associated_domain(field_type);
-                    if '<REF>' == domain:
+                    if '<<ref>>' == domain:
                         if (6 > len(block)):
                             print(block)
-                            debug('NOT ENOUGHT REFERENCE TABLE! (2)')
+                            debug('NOT ENOUGHT REFERENCE TABLE! (1)')
                             return
                     else:
+                        self.add_field_type(cur_tab_name, field_name, field_type)
                         field_type = self.get_field_type(cur_tab_name, field_name)
-                    debug('FIELD: ' + cur_tab_name + '::' + field_name + ' [' + field_type + '] (2)')
+                        domain = self.get_associated_domain(field_type);
+                        debug('FIELD: ' + cur_tab_name + '::' + field_name + ' [' + domain + '] ' + field_type + ' (1)')
                     
                     block = []
 
@@ -413,7 +439,9 @@ class TdbIndieSchema(Schema):
         #if 't_s_dokl_vip_zad' == field_name:
         #    print(field_type)
 
-        field_type = self.get_associated_domain(field_type);
+        domain = self.get_associated_domain(field_type);
+        
+        debug('TT >>> ' + field_type + ' >>> ' + domain)
         
         #if 't_s_dokl_vip_zad' == field_name:
         #    print(field_type)
@@ -424,7 +452,7 @@ class TdbIndieSchema(Schema):
         ref_table_name = ''
         ref_field_name = ''
         
-        if '<REF>' == field_type:
+        if '<<ref>>' == domain:
             ref_table_code = block[5]
             if '' == ref_table_code:
                 print(block)
@@ -439,7 +467,15 @@ class TdbIndieSchema(Schema):
             ref_table_name = self.__tab_names[ref_table_no]
             ref_field_name = field_name
             
-            field_type = self.get_field_type(ref_table_name, ref_field_name)
+            ref_field_type = self.get_field_type(ref_table_name, ref_field_name)
+            
+            # if '' = ref_field_type:
+                
+            ref_domain = self.get_associated_domain(ref_field_type)
+            domain = ref_domain
+            
+            if '' == ref_domain:
+                domain = 'int_t'
             
             #if 'id_obkon' == field_name:
             #    debug(str(ref_table_no))
@@ -454,12 +490,15 @@ class TdbIndieSchema(Schema):
                 self.__uk_keys[ref_table_name] = []
             self.__uk_keys[ref_table_name].append(ref_field_name)
 
+        if '' == domain or domain is None:
+            raise Exception('NO TYPE FOR "' + self.__current_table.name + '::' + field_name + '" ' + domain + ' ')
+
         if '' == ref_table_name:
-            debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + field_type + ' ')
+            debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + domain + ' ')
         else:
-            debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + field_type + ' (' + ref_table_name + ':' + ref_field_name + ')')
+            debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + domain + ' (' + ref_table_name + ':' + ref_field_name + ')')
                                                          
-        self.__current_table.add_field(field_name, field_type, True, field_caption)
+        self.__current_table.add_field(field_name, domain, True, field_caption)
         self.descriptionary.addfield(self.__current_table.name, field_name, field_caption)
         
     
@@ -556,98 +595,100 @@ class TdbIndieSchema(Schema):
                 block.append(line)
 
 
-    def process_blocks_temp(self): 
-
-        block = []
-        cur_tab_name = ''
-        table = None;
-        
-        for lineitem in self.__lines:
-            
-            line = lineitem.strip().rstrip('\r').rstrip('\n')
-            
-            if line == "":
-              
-                if 1 == len(block):
-                    if not block[0].isdigit():
-                      block = []
-                      
-                if 3 == len(block):
-                    if not table is None:
-                        self.tables[cur_tab_name] = table
-                    tab_no = block[0]
-                    tab_caption = block[1]
-                    tab_name = self.fmt_tab_name(block[2])
-                    if (tab_name.startswith('(')) and (tab_name.endswith(')')):
-                        tab_name = tab_name[1:-1]
-                    table = Table(tab_name, tab_caption + ' [' + tab_no + ']');
-                    cur_tab_name = tab_name
-                    block = []
-                    
-                elif 3 < len(block):
-                    field_num = block[0]
-                    field_caption = block[1]
-                    field_name = self.fmt_fld_name(block[2])
-                    field_len = 0
-                    field_ref = ''
-                    field_type = self.fmt_fld_type(block[3])
-                    field_type = self.get_associated_domain(field_type)
-
-                    # print('T' + tab_no + ' ' + cur_tab_name + '  ' + field_name + ' ' + field_type)
-
-                    ref_table_name = '<TABLE>'
-                    ref_field_name = field_name
-
-                    if '<REF>' == field_type:
-                        table_ref = ''
-                        if 'ID_Histor'.lower() == field_name and 6 > len(block):
-                          table_ref = u'БД № 6'
-                        if table_ref == '':
-                          if 5 < len(block):
-                              table_ref = block[5]
-                          else:
-                              table_ref = ''
-                              print('== WRONG LINE COUNT ' + str(len(block)) + '==' + cur_tab_name + '======')
-                              for b in block:
-                                  print(b)
-                              print('========')
-                            
-                        if table_ref <> '':
-                            table_ref = table_ref.replace(u'№', '').replace(u'БД', '').replace(u'DBNO', '').strip();
-                            if table_ref.isdigit():
-                                ref_table_no = table_ref;
-                                ref_table_name = self.__tab_names[int(ref_table_no)]
-                                base_type_key = ref_table_name + '::' + ref_field_name
-                                if base_type_key in self.__base_types:
-                                    field_type = self.__base_types[base_type_key]
-                                else:
-                                    print('NO REFERENCE FOR "' + base_type_key + '"')
-                                    field_type = 'int_t'
-                            else:
-                                print('WRONG REFERENCE NO "' + table_ref + '"')
-                                field_type = 'int_t'
-                    
-                    if field_type == '':
-                        field_type = block[3].strip().lower()
-                    
-                    table.add_field(field_name, field_type, False, field_caption)
-                    
-                    if '<REF>' == field_type:
-                        fk_key_name = 'fk_' + cur_tab_name + '_' + field_name + '_' + ref_table_name + '_' + ref_field_name
-                        field_list = [field_name]
-                        ref_field_list = [field_name]
-                        table.add_fk(fk_key_name, field_list, ref_table_name, ref_field_list, 'cascade', 'cascade')
-                      
-                    block = []
-            else:  
-                block.append(line)
-              
-        print('\n' * 3)
-
-        for t in self.tables:
-            print(t)
-            for f in table.fields:
-                print('  ' + f.name + '  ' + f.data_type)
-          
+#    def process_blocks_temp(self): 
+#
+#        block = []
+#        cur_tab_name = ''
+#        table = None;
+#        
+#        for lineitem in self.__lines:
+#            
+#            line = lineitem.strip().rstrip('\r').rstrip('\n')
+#            
+#            if line == "":
+#              
+#                if 1 == len(block):
+#                    if not block[0].isdigit():
+#                      block = []
+#                      
+#                if 3 == len(block):
+#                    if not table is None:
+#                        self.tables[cur_tab_name] = table
+#                    tab_no = block[0]
+#                    tab_caption = block[1]
+#                    tab_name = self.fmt_tab_name(block[2])
+#                    if (tab_name.startswith('(')) and (tab_name.endswith(')')):
+#                        tab_name = tab_name[1:-1]
+#                    table = Table(tab_name, tab_caption + ' [' + tab_no + ']');
+#                    cur_tab_name = tab_name
+#                    block = []
+#                    
+#                elif 3 < len(block):
+#                    field_num = block[0]
+#                    field_caption = block[1]
+#                    field_name = self.fmt_fld_name(block[2])
+#                    field_len = 0
+#                    field_ref = ''
+#                    field_type = self.fmt_fld_type(block[3])
+#                    domain = self.get_associated_domain(field_type)
+#                    
+#                    debug('>>>' +  field_type + ' >>> ' + domain)
+#
+#                    # print('T' + tab_no + ' ' + cur_tab_name + '  ' + field_name + ' ' + field_type)
+#
+#                    ref_table_name = '<TABLE>'
+#                    ref_field_name = field_name
+#
+#                    if '<<ref>>' == domain:
+#                        table_ref = ''
+#                        if 'ID_Histor'.lower() == field_name and 6 > len(block):
+#                          table_ref = u'БД № 6'
+#                        if table_ref == '':
+#                          if 5 < len(block):
+#                              table_ref = block[5]
+#                          else:
+#                              table_ref = ''
+#                              print('== WRONG LINE COUNT ' + str(len(block)) + '==' + cur_tab_name + '======')
+#                              for b in block:
+#                                  print(b)
+#                              print('========')
+#                            
+#                        if table_ref <> '':
+#                            table_ref = table_ref.replace(u'№', '').replace(u'БД', '').replace(u'DBNO', '').strip();
+#                            if table_ref.isdigit():
+#                                ref_table_no = table_ref;
+#                                ref_table_name = self.__tab_names[int(ref_table_no)]
+#                                base_type_key = ref_table_name + '::' + ref_field_name
+#                                if base_type_key in self.__base_types:
+#                                    domain = self.__base_types[base_type_key]
+#                                else:
+#                                    print('NO REFERENCE FOR "' + base_type_key + '"')
+#                                    domain = 'int_t'
+#                            else:
+#                                print('WRONG REFERENCE NO "' + table_ref + '"')
+#                                domain = 'int_t'
+#                    
+#                    if domain == '':
+#                        domain = self.fmt_fld_type(block[3])
+#                    
+#                    table.add_field(field_name, domain, False, field_caption)
+#                    
+#                    if '<<ref>>' == domain:
+#                        fk_key_name = 'fk_' + cur_tab_name + '_' + field_name + '_' + ref_table_name + '_' + ref_field_name
+#                        field_list = [field_name]
+#                        ref_field_list = [field_name]
+#                        table.add_fk(fk_key_name, field_list, ref_table_name, ref_field_list, 'cascade', 'cascade')
+#                      
+#                    block = []
+#            else:  
+#                block.append(line)
+#              
+#        print('\n' * 3)
+#
+#        #for t in self.tables:
+#        #    print(t)
+#        #    for f in table.fields:
+#        #        print('  ' + f.name + '  ' + f.data_type)
+#          
 
 

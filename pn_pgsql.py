@@ -137,12 +137,13 @@ class PysdunPgsql:
                                 not_null = ''
                         break
                 
-                field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
+                #field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
                         
-                #try:
-                #    field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
-                #except:
-                #    print('error:' + table_name + ':' + field.name + ' (' + data_type + ')' + ' ' + default + ' ' + serial + ' ' + not_null)
+                try:
+                    field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
+                except:
+                    field_item = ''
+                    print('error:' + table_name + ':' + field.name + ' (' + data_type + ')' + ' ' + default + ' ' + serial + ' ' + not_null)
                     
                 field_item = ibe_ddl.strip_statement(field_item)
 
