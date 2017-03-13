@@ -91,6 +91,7 @@ class PysdunPgsql:
         ddl_fk = []
         ddl_stored_procedures = {}
         ddl_triggers = []
+        ddl_descriptionary = []
         sql_data = []  # inserts
 
         #
@@ -169,13 +170,15 @@ class PysdunPgsql:
                     index_statement = ibe_ddl.strip_statement(index_statement)
                     ddl_indices.append(index_statement)
             if table.uk is not None:
-                for fk_name in table.uk:
-                    field_list = table.uk[fk_name]
+                for uk_name in table.uk:
+                    field_list = table.uk[uk_name]
                     template = 'alter table {} add constraint {} unique ({});'
-                    fk_statement = template.format(
-                        table_name, fk_name,
+                    uk_statement = template.format(
+                        table_name, uk_name,
                         ', '.join([str(f) for f in field_list]))
-                    ddl_uk.append(fk_statement)
+                    ddl_uk.append(uk_statement)
+            #else:
+            #    print('No unique keys for table ' + table.name)
             if table.pk is not None:
                 pk_name = 'pk_{}'.format(table_name)
                 template = 'alter table {} add constraint {} primary key ({});'
@@ -218,6 +221,16 @@ class PysdunPgsql:
                     # fk_statement = fk_statement.replace('alter table worksession', '-- alter table worksession')
                     ddl_fk.append(fk_statement + ';')
         #
+        for table_name in self.schema.tables:
+            table = self.schema.tables[table_name]
+            table_caption = self.schema.descriptionary.table(table_name)
+            coment = u"comment on table {} is '{}'".format(table_name, table_caption)
+            ddl_descriptionary.append(coment)
+            for field in table.fields:
+                field_caption = self.schema.descriptionary.field(table_name, field.name)
+                coment = u"comment on column {}.{} is '{}'".format(table_name, field.name, field_caption)
+                ddl_descriptionary.append(coment)
+
         for view in self.schema.views:
             ddl_views.append(view + ';')
 
@@ -363,6 +376,8 @@ class PysdunPgsql:
         file_lines.extend(sorted(ddl_fk))
         file_lines.append(crlf)
         file_lines.extend(sorted(ddl_views))
+        file_lines.append(crlf)
+        file_lines.extend(sorted(ddl_descriptionary))
                           
         f = codecs.open(fn_main, 'w', encoding=file_encoding)
         try:

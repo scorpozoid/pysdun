@@ -32,6 +32,7 @@ class TdbIndieSchema(Schema):
         Schema.__init__(self)
         self.__current_table = None
         self.__current_table_code = ''
+        self.__current_table_paragraph = ''
         self.__base_types = {}
         self.__tab_names = {}
         self.__uk_keys = {}
@@ -46,65 +47,88 @@ class TdbIndieSchema(Schema):
             self.predefine_domains()
             self.collect_base_types()
             self.process_blocks()
+            self.update_uk()
 
         except IOError as er:
             print('Can\'t open the "{0}" file'.format(filename))
               
             
     def strip_line(self, line):
-        #line = line.replace(u'«История»', u'История')
+        line = line.replace(u'«История»', u'История')
         line = line.replace(u'…', '...')
         line = line.replace('....', '...')
         line = line.replace('... .', '...')
+        line = line.replace(' ...', '...')
         line = line.replace(u'«', "[")
         line = line.replace(u'»', "]")
         line = line.strip().rstrip('\r').rstrip('\n')
         return line
+    
+    def fmt_fld_type(self, value):
+        return value.lower().replace('\t', '').replace(' ', '').replace(',', '').replace('.', '')
+        
+    def fmt_fld_name(self, value):
+        return value.lower().replace('\t', '_').replace(',', '_').replace('.', '_').replace(' ', '_').replace('__', '_').replace('.', '')
             
+    def fmt_fld_caption(self, value):
+        return value.replace('\t', ' ').replace('  ', ' ')
+        
+    def fmt_tab_name(self, value):
+        return value.lower().replace('\t', '_').replace(',', '_').replace('.', '_').replace(' ', '_').replace('__', '_').replace('.', '')
+            
+    def fmt_tab_caption(self, value):
+        return value.replace('\t', ' ').replace('  ', ' ')
+
     def get_associated_domain(self, value):
         #debug('GFT ' + value)
         
-        cLinkType = u'Ссылка'.lower()
-        cFileType = u'Файл'.lower()
-        cTextType = u'Символьное'.lower()
-        cMemoTypeRu = u'М'.lower()
-        cMemoTypeEn = u'M'.lower()
-        cStringTypeRu = u'Строка'.lower()
-        cStringTypeCharRu = u'С'.lower()
-        cStringTypeCharEn = u'C'.lower()
-        cNumericType1 = u'Числовое'.lower()
-        cNumericType2 = u'Численное'.lower()
-        cNumericType3 = u'N'.lower()
-        cIntType = u'Целое'.lower()
-        cTimestampType1 = u'Дата, время'.lower().replace(' ', '')
-        cTimestampType2 = u'Время, Дата,'.lower().replace(' ', '') 
-        cTimestampType3 = u'Время, Дата'.lower().replace(' ', '') 
-        cDateType = u'Дата'.lower()
-        cDateTypeChar = u'D'.lower()
-        cTimeType = u'Время'.lower()
-        cReferenceType1 = u'БД'.lower()
-        cReferenceType2 = u'@@DBT'.lower()
-        cGeoType = u'Град. мин. сек'.lower().replace(' ', '')
+        cLinkType = self.fmt_fld_type(u'Ссылка')
+        cFileType = self.fmt_fld_type(u'Файл') 
+        cTextType = self.fmt_fld_type(u'Символьное') 
+        cMemoTypeRu = self.fmt_fld_type(u'М') 
+        cMemoTypeEn = self.fmt_fld_type(u'M') 
+        cStringTypeRu = self.fmt_fld_type(u'Строка') 
+        cStringTypeCharRu = self.fmt_fld_type(u'С') 
+        cStringTypeCharEn = self.fmt_fld_type(u'C') 
+        cNumericType1 = self.fmt_fld_type(u'Числовое') 
+        cNumericType2 = self.fmt_fld_type(u'Численное') 
+        cNumericType3 = self.fmt_fld_type(u'N') 
+        cIntType = self.fmt_fld_type(u'Целое') 
+        cTimestampType1 = self.fmt_fld_type(u'Дата, время')
+        cTimestampType2 = self.fmt_fld_type(u'Время, Дата,')
+        cTimestampType3 = self.fmt_fld_type(u'Время, Дата') 
+        cDateType = self.fmt_fld_type(u'Дата') 
+        cDateTypeChar = self.fmt_fld_type(u'D') 
+        cTimeType = self.fmt_fld_type(u'Время') 
+        cReferenceType1 = self.fmt_fld_type(u'БД') 
+        cReferenceType2 = self.fmt_fld_type(u'@@DBT') 
+        cGeoType1 = self.fmt_fld_type(u'Град. мин. сек') 
+        cGeoType2 = self.fmt_fld_type(u'Град. мин. сек') 
 
-        value = value.lower().replace(' ', '').replace('\t', '')
+        timestamp_type_list = [cTimestampType1, cTimestampType2, cTimestampType3]
+        date_type_list = [cDateTypeChar, cDateType]
+        numeric_type_list = [cNumericType1, cNumericType2, cNumericType3]
+        text_type_list = [cTextType, cStringTypeRu, cStringTypeCharRu, cStringTypeCharEn, cMemoTypeRu, cMemoTypeEn]
+        geo_type_list = [cGeoType1, cGeoType2]
+        #print(tslist)
 
-        if value in (cTextType, cStringTypeRu, cStringTypeCharRu, cStringTypeCharEn, cMemoTypeRu, cMemoTypeEn):
+        if value in text_type_list:
             return 'text_t'
         elif cIntType == value:
             return 'int_t'
-        elif value in (cNumericType1, cNumericType2, cNumericType3):
+        elif value in numeric_type_list:
             return 'double_t'
         elif cTimeType == value:
             return 'time_t'
-        elif value in (cDateTypeChar, cDateType):
+        elif value in date_type_list:
             return 'date_t'
-        elif value in (cTimestampType1, cTimestampType2, cTimestampType3):
+        elif value in timestamp_type_list:
             return 'timestamp_t'
         elif value.startswith(cFileType):
             return 'file_t'
         elif cLinkType == value:
             return 'filename_t'
-        elif cGeoType == value:
+        elif value in geo_type_list:
             return 'lla_t'
         elif 'user_id_t' == value:
             return 'user_id_t'
@@ -162,8 +186,8 @@ class TdbIndieSchema(Schema):
         
         
     def add_field_type(self, table_name, field_name, field_type):
-        table_name = table_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
-        field_name = field_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+        table_name = self.fmt_tab_name(table_name)
+        field_name = self.fmt_fld_name(field_name)
         field_type = self.get_associated_domain(field_type)
         if '<REF>' == field_type:
             field_type = ''
@@ -174,8 +198,8 @@ class TdbIndieSchema(Schema):
 
 
     def get_field_type(self, table_name, field_name):
-        table_name = table_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
-        field_name = field_name.lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+        table_name = self.fmt_tab_name(table_name)
+        field_name = self.fmt_fld_name(field_name)
         reftype_key = table_name + '::' + field_name
         if reftype_key in self.__base_types:
             return self.__base_types[reftype_key]
@@ -271,8 +295,8 @@ class TdbIndieSchema(Schema):
                     block = []
                             
                 elif 2 == len(block):
-                    cur_tab_caption = block[0].replace('\t', ' ')
-                    cur_tab_name = block[1].lower().replace(' ', '_').replace('\t', '_').replace('__', '_')
+                    cur_tab_caption = self.fmt_tab_caption(block[0])
+                    cur_tab_name = self.fmt_tab_name(block[1])
                     if (cur_tab_name.startswith('(')) and (cur_tab_name.endswith(')')):
                         cur_tab_name = cur_tab_name[1:-1]
                     if cur_tab_name in self.__tab_names.values():
@@ -356,6 +380,7 @@ class TdbIndieSchema(Schema):
         if '' == self.__current_table.name:
             print(block)
             raise Exception('TABLE NAME MISMATCH (BLOCK)') 
+            
         field_num = block[0]
         if not field_num.isdigit():
             print(block)
@@ -366,22 +391,33 @@ class TdbIndieSchema(Schema):
             print(block)
             raise Exception('FIELD COUNTING MISMATCH') 
         
-        field_caption = block[1].replace('\t', ' ').replace('  ', ' ')
+        field_caption = self.fmt_fld_caption(block[1])
         if '' == field_caption:
             print(block)
             raise Exception('FIELD CAPTION MISMATCH') 
         
-        field_name = block[2].lower().replace('\t', ' ').replace(' ', '_').replace('__', '_')
+        field_name = self.fmt_fld_name(block[2])
         if '' == field_caption:
             print(block)
             raise Exception('FIELD NAME MISMATCH') 
          
-        field_type = block[3].lower().replace('\t', ' ').replace(' ', '_').replace('__', '_')
+        self.descriptionary.addfield(self.__current_table.name, field_name, field_caption)
+        
+        #if 't_s_dokl_vip_zad' == field_name:
+        #    print(block[3])
+
+        field_type = self.fmt_fld_type(block[3])
             
         #field_type = self.get_field_type(self.__current_table.name, field_name)
-            
+
+        #if 't_s_dokl_vip_zad' == field_name:
+        #    print(field_type)
+
         field_type = self.get_associated_domain(field_type);
         
+        #if 't_s_dokl_vip_zad' == field_name:
+        #    print(field_type)
+            
         #if 'id_obkon' == field_name:
         #    debug(field_type)
 
@@ -414,13 +450,9 @@ class TdbIndieSchema(Schema):
             ref_field_list = [field_name]
             self.__current_table.add_fk(fk_key_name, field_list, ref_table_name, ref_field_list, 'on update cascade', 'on delete cascade')
 
-
-    
-            #uk_key_name = 'pk_' + ref_table_name + '_' + ref_field_name;
-            #__uk_keys
-            
-            
-            
+            if not ref_table_name in self.__uk_keys:
+                self.__uk_keys[ref_table_name] = []
+            self.__uk_keys[ref_table_name].append(ref_field_name)
 
         if '' == ref_table_name:
             debug('NEW FIELD "' + self.__current_table.name + '::' + field_name + '" ' + field_type + ' ')
@@ -430,7 +462,7 @@ class TdbIndieSchema(Schema):
         self.__current_table.add_field(field_name, field_type, True, field_caption)
         self.descriptionary.addfield(self.__current_table.name, field_name, field_caption)
         
-                
+    
     def process_table_block(self, block): 
         #debug('>> process_table_block')
         tab_num = -1
@@ -453,17 +485,32 @@ class TdbIndieSchema(Schema):
             print(block)
             raise Exception('TABLE COUNTING ERROR ' + str(tab_num) + ' - ' + str(int(tab_code))) 
             
-        tab_name = tab_name.lower().replace('\t', ' ').replace(' ', '_').replace('__', '_')
-        
+        tab_caption = self.fmt_tab_caption(tab_caption)
+        tab_caption = tab_caption + ' [' + self.__current_table_paragraph + ']'
+        tab_name = self.fmt_tab_name(tab_name)
+
         if (tab_name.startswith('(')) and (tab_name.endswith(')')):
             tab_name = tab_name[1:-1]
 
         if self.__current_table is None:
             debug('NEW TABLE :' + tab_name + ' / ' + tab_caption + ' [' + tab_code + ']')
             self.__current_table = Table(tab_name, tab_caption + ' [' + tab_code + ']');
+            self.descriptionary.addtab(self.__current_table.name, tab_caption)
         else:
             print(block)
             raise Exception('TABLE INIT MISMATCH') 
+        
+        
+    def update_uk(self):
+        for table_name in self.tables:
+            if table_name in self.__uk_keys:
+                uk_list = self.__uk_keys[table_name]
+                for uk_field in uk_list:
+                    uk_name = 'uk_' + table_name + '_' + uk_field
+                    uk_fields = []
+                    uk_fields.append(uk_field)
+                    self.tables[table_name].add_uk(uk_name, uk_fields)
+                    #debug(uk_name)
         
         
     def fixate_current_table(self): 
@@ -488,6 +535,7 @@ class TdbIndieSchema(Schema):
             m = re_tbd_header_break.match(line)
             if m is not None:
                 dbtcodepart = m.group(1)
+                self.__current_table_paragraph = dbtcodepart
                 dbtcode = self.get_dbt_code(dbtcodepart)
             if dbtcode != '':
                 #debug('CODE: ' + dbtcode)
@@ -529,7 +577,7 @@ class TdbIndieSchema(Schema):
                         self.tables[cur_tab_name] = table
                     tab_no = block[0]
                     tab_caption = block[1]
-                    tab_name = block[2].lower().replace(' ', '_').replace('\t', '_')
+                    tab_name = self.fmt_tab_name(block[2])
                     if (tab_name.startswith('(')) and (tab_name.endswith(')')):
                         tab_name = tab_name[1:-1]
                     table = Table(tab_name, tab_caption + ' [' + tab_no + ']');
@@ -539,10 +587,10 @@ class TdbIndieSchema(Schema):
                 elif 3 < len(block):
                     field_num = block[0]
                     field_caption = block[1]
-                    field_name = block[2].lower().replace(' ', '_').replace('\t', '_')
+                    field_name = self.fmt_fld_name(block[2])
                     field_len = 0
                     field_ref = ''
-                    field_type = block[3].lower().replace(' ', '').replace('\t', '')
+                    field_type = self.fmt_fld_type(block[3])
                     field_type = self.get_associated_domain(field_type)
 
                     # print('T' + tab_no + ' ' + cur_tab_name + '  ' + field_name + ' ' + field_type)
