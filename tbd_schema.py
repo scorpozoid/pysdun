@@ -150,7 +150,7 @@ class TdbIndieSchema(Schema):
         elif value.startswith(cFileType):
             return 'file_t'
         elif value.startswith(cReferenceType1) or value.startswith(cReferenceType2):
-            debug('GFT ' + value + ' >> ' + '<<ref>>')
+            #debug('GFT ' + value + ' >> ' + '<<ref>>')
             return '<<ref>>'
         elif 'user_id_t' == value:
             return 'user_id_t'
@@ -166,7 +166,7 @@ class TdbIndieSchema(Schema):
         self.domains.append(Domain('int_t', 'integer', False))
         self.domains.append(Domain('double_t', 'double precision', False))
         self.domains.append(Domain('timestamp_t', 'timestamp', False))
-        self.domains.append(Domain('time_t', 'time', False))
+        self.domains.append(Domain('time_t', 'timestamp', False))
         self.domains.append(Domain('date_t', 'date', False))
         self.domains.append(Domain('lla_t', 'varchar(128)', False))
         self.domains.append(Domain('file_t', 'varchar(1024)', False))
@@ -441,7 +441,7 @@ class TdbIndieSchema(Schema):
 
         domain = self.get_associated_domain(field_type);
         
-        debug('TT >>> ' + field_type + ' >>> ' + domain)
+        # debug('TT >>> ' + field_type + ' >>> ' + domain)
         
         #if 't_s_dokl_vip_zad' == field_name:
         #    print(field_type)
@@ -481,10 +481,15 @@ class TdbIndieSchema(Schema):
             #    debug(str(ref_table_no))
             #    debug(str(ref_table_name))
             
-            fk_key_name = 'fk_' + self.__current_table.name + '_' + field_name + '_' + ref_table_name + '_' + ref_field_name
+            fk_name = 'fk_' + self.__current_table.name + '_' + field_name + '_' + ref_table_name + '_' + ref_field_name
+            
+            # interbase complaint index name (30 symbols)
+            index_name_maxlen = 30
+            fk_name = fk_name[0:index_name_maxlen - 1] 
+            
             field_list = [field_name]
             ref_field_list = [field_name]
-            self.__current_table.add_fk(fk_key_name, field_list, ref_table_name, ref_field_list, 'on update cascade', 'on delete cascade')
+            self.__current_table.add_fk(fk_name, field_list, ref_table_name, ref_field_list, 'on update cascade', 'on delete cascade')
 
             if not ref_table_name in self.__uk_keys:
                 self.__uk_keys[ref_table_name] = []
@@ -546,6 +551,9 @@ class TdbIndieSchema(Schema):
                 uk_list = self.__uk_keys[table_name]
                 for uk_field in uk_list:
                     uk_name = 'uk_' + table_name + '_' + uk_field
+                    index_name_maxlen = 30 # interbase complaint index name (30 symbols)
+                    uk_name = uk_name[0:index_name_maxlen - 1] 
+
                     uk_fields = []
                     uk_fields.append(uk_field)
                     self.tables[table_name].add_uk(uk_name, uk_fields)

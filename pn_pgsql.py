@@ -229,7 +229,7 @@ class PysdunPgsql:
             ddl_descriptionary.append(coment)
             for field in table.fields:
                 field_caption = self.schema.descriptionary.field(table_name, field.name)
-                coment = u"comment on column {}.{} is '{}'".format(table_name, field.name, field_caption)
+                coment = u"comment on column {}.{} is '{}';".format(table_name, field.name, field_caption)
                 ddl_descriptionary.append(coment)
 
         for view in self.schema.views:
