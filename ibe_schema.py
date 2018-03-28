@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*- 
 # 
-# This python script converts SQL-script written on Interbase/Firebird dialect
-# to Microsoft Transact-SQL compatible script
-# 
-# Restrictions: 
+# IbeSchema class load SQL-script written on Interbase/Firebird dialect to Schema class
+#
+# Restrictions:
 #     - Don't use comma (;) char anywhere except statement delimiter (for example, in object descriptions)
 #     - Use simple english database object names (without spaces, national characters, etc)
 #     - [seems fixed] Don't use remote server connection string (like 192.168.47.38:/srv/firebird/moonhattan) in source script
