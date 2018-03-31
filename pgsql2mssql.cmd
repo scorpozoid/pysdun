@@ -20,17 +20,14 @@ set PATH=%PATH%;%HOME%\devel\shell\devel
 ver | find "6.1" > nul
 if %ERRORLEVEL% == 0 chcp 65001
 
-rem BACKUPDIR - destination folder for backup/dump data
 set BACKUPDIR=C:\home\ark\devel\pg2ms
-rem DB2BACKUP - database name to backup
 set DB2BACKUP=dfpostdb
 set SCHEMADUMP=%BACKUPDIR%\%TIMESTAMP%-%DB2BACKUP%-01.schema 
-set DATADUMP=%BACKUPDIR%\%TIMESTAMP%-%DB2BACKUP%-02.pgdump 
 
 set lc_messages=en_US.UTF-8
 
-set PGHOST=10.4.0.104
-set PGHOSTADDR=10.4.0.104
+rem set PGHOST=10.4.0.104
+rem set PGHOSTADDR=10.4.0.104
 set PGHOST=127.0.0.1
 set PGHOSTADDR=127.0.0.1
 set PGPORT=5432
