@@ -75,11 +75,6 @@ class PgSchema(Schema):
                     else:
                         func_end_cnt = func_end_cnt + 1
 
-                # if re.search('begin ', line, re.IGNORECASE):
-                #     func_beg_cnt = func_beg_cnt + 1
-                # if re.search('end;', line, re.IGNORECASE):
-                #     func_end_cnt = func_end_cnt + 1
-
             if func and (0 < func_beg_cnt) and (0 < func_end_cnt) and (func_beg_cnt == func_end_cnt):
                 func = False
                 continue
