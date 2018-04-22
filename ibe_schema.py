@@ -154,7 +154,6 @@ class IbeSchema(Schema):
         domains = {}
         re_dom = re.compile(
             'CREATE\s+DOMAIN\s+(\w+)\s+AS\s+(.*)?;', re.IGNORECASE
-            #'CREATE\s+DOMAIN\s+(\w+)\s+AS\s+(?:.*);', re.IGNORECASE
         )
         for statement in self.__statements[:]:
             m = re_dom.search(statement)
@@ -171,7 +170,6 @@ class IbeSchema(Schema):
         for dom_name in domains:
             domain = domains[dom_name]
             self.domains.append(domain)
-
 
     def parse_views(self):
         self.views = []
@@ -471,7 +469,6 @@ class IbeSchema(Schema):
                     self.password = groups["p_db_password"].strip()
                 else:
                     self.password = ''
-
 
     def parse_statements(self):
         self.parse_header()
