@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 #
 # This python script converts PostgreSQL dump
@@ -58,6 +57,8 @@ def main(argv):
 
 
 if __name__ == "__main__":
+
+    #
     #v_argv = (
     #    "-i",
     #    "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/DatabaseSrc/dfpostdb/ib/dfpostdb-ib.sql",
@@ -65,7 +66,9 @@ if __name__ == "__main__":
     #    "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/DatabaseSrc/dfpostdb/mssql/dfpostdb-mssql.sql"
     #)
     #main(v_argv)
+    #
 
+    #
     #v_argv = (
     #    "-i",
     #    "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/DatabaseSrc/spectrdb/ib/spectrdb-ib.sql",
@@ -73,6 +76,6 @@ if __name__ == "__main__":
     #    "C:/home/ark/devel/nig/dfpost/418/trunk/DFLib/DataBase/DatabaseSrc/spectrdb/mssql/spectrdb-mssql.sql"
     #)
     #main(v_argv)
-
+    #
 
     main(sys.argv[1:])

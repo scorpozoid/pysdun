@@ -12,7 +12,6 @@ import os
 
 from os import path
 
-import ibe_ddl
 from ibe_ddl import Schema
 from ibe_ddl import Generator
 from ibe_ddl import Domain
@@ -38,25 +37,61 @@ class PgSchema(Schema):
 
     def load(self, filename):
         try:
-            #self.__lines = [line for line in codecs.open(filename, encoding='cp1251')]
+            # self.__lines = [line for line in codecs.open(filename, encoding='cp1251')]
+            # print(filename)
             self.__lines = [line for line in codecs.open(filename)]
-            print(self.__lines)
+            # for line in self.__lines:
+            #     print(line)
+            self.__functions = {}
             self.prepare_statements()
-            #for statement in self.__statements:
-            #    debug(statement)
+            for statement in self.__statements:
+                print(statement)
+
         except IOError:
             print('Can\'t open the "{0}" file'.format(filename))
 
     def prepare_statements(self):
-        term = ';'
         buf = ''
         comment = False
+        func = False
+        func_beg_cnt = 0
+        func_end_cnt = 0
         for line in self.__lines[:]:
             line = line.strip()
-            #debug(line)
+            if 1 > len(line):
+                continue
+
+            if not func:
+                if re.search('create function ', line, re.IGNORECASE):
+                    __functions[]
+                    func = True
+                    func_beg_cnt = 0
+                    func_end_cnt = 0
+                    continue
+            else:
+                if (-1 < line.find('$$')) or (-1 < line.find('$_$')):
+                    if (0 == func_beg_cnt) or (func_beg_cnt < func_end_cnt):
+                        func_beg_cnt = func_beg_cnt + 1
+                    else:
+                        func_end_cnt = func_end_cnt + 1
+
+                # if re.search('begin ', line, re.IGNORECASE):
+                #     func_beg_cnt = func_beg_cnt + 1
+                # if re.search('end;', line, re.IGNORECASE):
+                #     func_end_cnt = func_end_cnt + 1
+
+            if func and (0 < func_beg_cnt) and (0 < func_end_cnt) and (func_beg_cnt == func_end_cnt):
+                func = False
+                continue
+
+            if func:
+                continue
+
             x = line.find('--')
             if -1 < x:
                 line = line[:x]
+            if 1 > len(line):
+                continue
             x1 = line.find('/*')
             x2 = line.find('*/')
             if (-1 < x1) or (-1 < x2):
@@ -70,13 +105,18 @@ class PgSchema(Schema):
                         line = line[x2 + 2:]
                         comment = False
 
-            if ('' == line) or comment:
+            if (1 > len(line)) or comment:
                 continue
+
+            # print('>> {} {}'.format(line, len(line)))
+
             buf = buf + line + ' '
-            if term in buf.lower():
-                buf = re.sub('[\t+\r+\n+]', ' ', buf).strip()
+            if ";" in buf.lower():
+                print(buf)
+                buf = re.sub("[\t+\r+\n+]", ' ', buf).strip()
                 buf = buf.replace('( ', '(')
                 buf = buf.replace('  ', ' ')
+
                 if buf.lower().startswith('insert'):
                     self.__statements.append(buf)
                 else:

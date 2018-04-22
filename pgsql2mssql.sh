@@ -2,7 +2,7 @@
 
 SRC_DB_NAME=dfpostdb
 TEST_DB_NAME=dfpostdbpysdun
-WORK_DIR=$HOME/devel/shell/devel/db/pysdun
+WORK_DIR=$HOME/devel/prj/pysdun
 TS=`date +%Y.%m.%d` # `date +%Y.%m.%d.%H.%M.%S`
 PGSQL_SCHEMA=${WORK_DIR}/${TS}-${SRC_DB_NAME}-pgsql.schema
 MSSQL_SCHEMA=${WORK_DIR}/${TS}-${SRC_DB_NAME}-mssql.schema
