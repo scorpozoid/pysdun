@@ -44,21 +44,13 @@ class PgSchema(Schema):
 
     def load(self, filename):
         try:
-            # self.__lines = [line for line in codecs.open(filename, encoding='cp1251')]
-            # print(filename)
             self.__lines = [line for line in codecs.open(filename)]
-            # for line in self.__lines:
-            #     print(line)
             self.prepare_statements()
-            # for statement in self.__statements:
-            #     print(statement)
+            self.prepare_functions()
             self.parse_tables()
-
-            # for func in self.__functions:
-            #     print("<<<<<<<< " + func)
-            #     for func_line in self.__functions[func]:
-            #         print(" " + func_line)
-            #     print(">>>>>>>> " + func)
+            self.parse_domains()
+            self.parse_views()
+            self.parse_triggers()
 
         except IOError:
             print('Can\'t open the "{0}" file'.format(filename))
@@ -139,6 +131,36 @@ class PgSchema(Schema):
                     self.__statements.append(buf)
                 print(buf)
                 buf = ''
+
+    def prepare_functions(self):
+        for func_name in self.__functions:
+            func = StoredProcedure(func_name)
+            body = self.__functions[func_name]
+            for line in body:
+                func.body.append('-- ' + line)
+            self.procedures.append(func)
+
+    def parse_domains(self):
+        domains = {}
+        re_dom = re.compile(
+            'CREATE\s+DOMAIN\s+([\w\.]+)\s+AS\s+(.*);', re.IGNORECASE
+        )
+        for statement in self.__statements[:]:
+            m = re_dom.search(statement)
+            if m:
+                try:
+                    dom_name = m.group(1)
+                    data_type = m.group(2).strip()
+                    data_type = strip_nextval(data_type)
+                    autoinc = dom_name.endswith('_autoinc') or dom_name.endswith('sequence_t')
+                    domain = Domain(dom_name, data_type, autoinc)
+                    domains[dom_name] = domain
+                except:
+                    print('Error parse "' + statement + '"')
+        for dom_name in domains:
+            domain = domains[dom_name]
+            self.domains.append(domain)
+
 
     def parse_tables(self):
         re_create_table = re.compile('create\s+table\s+(\w+)\s+\((.*)?\);', re.IGNORECASE)
@@ -237,3 +259,51 @@ class PgSchema(Schema):
                 field_list = [item.strip() for item in field_items.split(',')]
                 self.tables[table_name].add_index(index_name, field_list, order, unique)
                 continue
+
+    def parse_views(self):
+        self.views = []
+        for statement in self.__statements[:]:
+            m = re.match('create\s+view\s+(.*)?;', statement, re.IGNORECASE)
+            if m is not None:
+                self.views.append(statement.rstrip(';').strip())
+
+    def parse_triggers(self):
+        self.triggers = []
+        rep_create_trigger = \
+          'create\s+trigger\s+(?P<p_tr_name>\w+)\s+(?P<p_tr_place>(before|after)\s+(insert|update|delete))\s+' \
+          'on\s+(?P<p_table_name>\w+)\s+for\s+each\s+(?P<p_range>row|statement)\s+execute\s+procedure\s+(?P<p_func>\w+)'
+        re_create_trigger = re.compile(rep_create_trigger, re.IGNORECASE)
+        for statement in self.__statements[:]:
+            m = re_create_trigger.match(statement)
+            if m is not None:
+                groups = m.groupdict()
+                if "p_tr_name" in groups:
+                    tr_name = groups["p_tr_name"].strip()
+                else:
+                    tr_name = ''
+                if "p_table_name" in groups:
+                    table_name = groups["p_table_name"].strip()
+                else:
+                    table_name = ''
+                if "p_tr_place" in groups:
+                    tr_place = groups["p_tr_place"].strip()
+                else:
+                    tr_place = ''
+                if "p_tr_position" in groups:
+                    tr_pos = groups["p_tr_position"]
+                else:
+                    tr_pos = ''
+                if "p_func" in groups:
+                    tr_func = groups["p_func"]
+                else:
+                    tr_func = ''
+
+                tr = Trigger(tr_name)
+                tr.table = table_name
+                tr.place = tr_place
+                tr.position = tr_pos
+                if tr_func in self.__functions:
+                    for line in self.__functions[tr_func]:
+                        tr.body.append('-- ' + line)
+
+                self.triggers.append(tr)
