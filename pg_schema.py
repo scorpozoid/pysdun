@@ -63,7 +63,7 @@ class PgSchema(Schema):
 
             if not func:
                 if re.search('create function ', line, re.IGNORECASE):
-                    __functions[]
+                    # __functions[]
                     func = True
                     func_beg_cnt = 0
                     func_end_cnt = 0
