@@ -14,7 +14,6 @@ import getopt
 from pg_schema import PgSchema
 from pn_mssql import PysdunMssql
 
-
 def debug(msg):
     # print(sys.stdout.encoding)
     print(msg.encode(sys.stdout.encoding, errors='replace'))

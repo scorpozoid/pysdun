@@ -83,6 +83,7 @@ class PysdunMssql:
         data_type = re.sub('default\s+true', 'default 1', data_type, flags=re.I)
 
         data_type = re.sub("'now'", 'getdate()', data_type, flags=re.I)
+        data_type = re.sub("default now", 'default getdate', data_type, flags=re.I)
 
         return data_type
 

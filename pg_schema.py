@@ -40,6 +40,7 @@ class PgSchema(Schema):
         self.__lines = []
         self.__statements = []
         self.__functions = {}
+        self.alias = '{{alias}}'
         self.load(filename)
 
     def load(self, filename):
@@ -129,7 +130,7 @@ class PgSchema(Schema):
                 else:
                     buf = buf.lower().replace(' using btree', '')
                     self.__statements.append(buf)
-                print(buf)
+                # print(buf)
                 buf = ''
 
     def prepare_functions(self):
