@@ -70,7 +70,6 @@ class IbeSchema(Schema):
         except IOError as er:
             print('Can\'t open the "{0}" file'.format(filename))
 
-
     def replace_term(self, statement, term):
         if self.__re_set_term is None:
             self.__re_set_term = re.compile('set\s+term\s+?([;^])\s+?([;^])', re.IGNORECASE)
@@ -84,7 +83,7 @@ class IbeSchema(Schema):
         buf = ''
         comment = False
         i = 0
-        #stripped_lines = (line.strip() for line in self.__lines[:])
+        # stripped_lines = (line.strip() for line in self.__lines[:])
         for line in self.__lines[:]:
             line = line.strip()
             term = self.replace_term(line, term)
