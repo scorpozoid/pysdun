@@ -47,7 +47,7 @@ class PysdunMssql:
     @staticmethod
     def replace_data_type(data_type):
         blob_bin = 'varbinary(max)'
-        blob_memo = 'varchar(max)'
+        blob_memo = 'nvarchar(max)'
         gr_sub_type = 'gr_sub_type'
         gr_segment_size = 'gr_segment_size'
         regex_blob = 'blob(?:\s+sub_type\s+(?P<{}>\d+))(?:\s+segment\s+size\s+(?P<{}>\d+))'.format(
@@ -75,15 +75,20 @@ class PysdunMssql:
         # GETDATE() в MSSQL работает только с полями типа datetime, с timestamp-полями - не работает
 
         if not data_type.startswith('t_'):
+            data_type = re.sub('timestamp with time zone', 'datetime2', data_type, flags=re.I)
+            data_type = re.sub('timestamp without time zone', 'datetime2', data_type, flags=re.I)
             data_type = re.sub('timestamp', 'datetime', data_type, flags=re.I)
             data_type = re.sub('boolean', 'bit', data_type, flags=re.I)
+            data_type = re.sub('character varying', 'nvarchar', data_type, flags=re.I)
+            data_type = re.sub('text', 'nvarchar(max)', data_type, flags=re.I)
+            # data_type = re.sub('varchar', 'nvarchar', data_type, flags=re.I)
 
         data_type = re.sub('numeric\(18,\s*0\)', 'bigint', data_type, flags=re.I)
         data_type = re.sub('default\s+false', 'default 0', data_type, flags=re.I)
         data_type = re.sub('default\s+true', 'default 1', data_type, flags=re.I)
 
-        data_type = re.sub("'now'", 'getdate()', data_type, flags=re.I)
-        data_type = re.sub("default now", 'default getdate', data_type, flags=re.I)
+        data_type = re.sub("'now'", 'getdate', data_type, flags=re.I)
+        data_type = re.sub("default now", 'default getdate()', data_type, flags=re.I)
 
         return data_type
 
@@ -115,7 +120,9 @@ class PysdunMssql:
             for domain in self.schema.domains:
                 data_type = PysdunMssql.replace_data_type(domain.data_type)
                 domain_name = domain.name
-                ddl_udt.append('create type {0} from {1}'.format(domain_name, data_type))
+                statement = 'create type {0} from {1}'.format(domain_name, data_type)
+                statement = re.sub('default', '-- default', statement, flags=re.I)
+                ddl_udt.append(statement)
         #
         for table_name in self.schema.tables:
             table = self.schema.tables[table_name]
@@ -217,10 +224,23 @@ class PysdunMssql:
                     # fk_statement = fk_statement.replace('alter table navig', '-- alter table navig')
                     # fk_statement = fk_statement.replace('alter table pf_result', '-- alter table pf_result')
                     # fk_statement = fk_statement.replace('alter table worksession', '-- alter table worksession')
+
+                    fk_statement = re.sub(
+                        "alter table xjob add constraint fk_xjob_sked",
+                        "-- /cyclic/ alter table xjob add constraint fk_xjob_sked",
+                        fk_statement,
+                        flags=re.I)
+
                     ddl_fk.append(fk_statement)
 
         #
         for view in self.schema.views[:]:
+            view = re.sub('::bigint', '', view, flags=re.I)
+            view = re.sub('::text', '', view, flags=re.I)
+            view = re.sub('::timestamp with time zone', '', view, flags=re.I)
+            view = re.sub('::timestamp without time zone', '', view, flags=re.I)
+            view = re.sub('"interval"', 'interval', view, flags=re.I)
+            view = re.sub('"offset"', 'offset', view, flags=re.I)
             ddl_views.append(view + '\n' + 'go\n')
 
         #

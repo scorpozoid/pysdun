@@ -19,6 +19,7 @@ set PATH=%PATH%;%HOMEBIN%\postgresql-9.4.15\x32\bin
 set PATH=%PATH%;%HOMEBIN%\aoo-2018.03.21
 set PATH=%PATH%;C:\Program Files\PostgreSQL\9.4\bin
 set PATH=%PATH%;C:\Program Files (x86)\PostgreSQL\9.4\bin
+set PATH=%PATH%;%HOME%\devel\prj\pysdun
 
 set TIMESTAMP=0000-00-00
 
@@ -27,9 +28,8 @@ if %ERRORLEVEL% == 0 chcp 65001
 
 for /f "delims=" %%A in ('aoogen date --minus') do set "TIMESTAMP=%%A"
 
-set PATH=%PATH%;%HOME%\devel\prj\pysdun
 set DB2BACKUP=dfpostdb
-set BACKUPDIR=%HOME%\devel\prj\pysdun
+set BACKUPDIR=%HOME%\devel\prj\pysdun\.out
 set SCHEMADUMP=%BACKUPDIR%\%TIMESTAMP%-%DB2BACKUP%-pgsql-01.schema 
 set MSSQLSCHEMA=%BACKUPDIR%\%TIMESTAMP%-%DB2BACKUP%-mssql-01.sql 
 
@@ -44,7 +44,10 @@ set PGCLIENTENCODING=UTF8
 echo Dump scheme...
 pg_dump -d %DB2BACKUP% --schema=public --no-owner --no-privileges --schema-only -f %SCHEMADUMP%
 
+echo Convert SQL dialect from PostgreSQL to Microsoft SQLServer.
 python pgsql2mssql.py -i %SCHEMADUMP% -o %MSSQLSCHEMA%
+
+echo Complete.
 
 pause
 
