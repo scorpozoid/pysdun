@@ -47,7 +47,7 @@ class PysdunMssql:
     @staticmethod
     def replace_data_type(data_type):
         blob_bin = 'varbinary(max)'
-        blob_memo = 'nvarchar(max)'
+        blob_memo = 'varchar(max)'
         gr_sub_type = 'gr_sub_type'
         gr_segment_size = 'gr_segment_size'
         regex_blob = 'blob(?:\s+sub_type\s+(?P<{}>\d+))(?:\s+segment\s+size\s+(?P<{}>\d+))'.format(
@@ -79,8 +79,8 @@ class PysdunMssql:
             data_type = re.sub('timestamp without time zone', 'datetime2', data_type, flags=re.I)
             data_type = re.sub('timestamp', 'datetime', data_type, flags=re.I)
             data_type = re.sub('boolean', 'bit', data_type, flags=re.I)
-            data_type = re.sub('character varying', 'nvarchar', data_type, flags=re.I)
-            data_type = re.sub('text', 'nvarchar(max)', data_type, flags=re.I)
+            data_type = re.sub('character varying', 'varchar', data_type, flags=re.I)
+            data_type = re.sub('text', 'varchar(max)', data_type, flags=re.I)
             # data_type = re.sub('varchar', 'nvarchar', data_type, flags=re.I)
 
         data_type = re.sub('numeric\(18,\s*0\)', 'bigint', data_type, flags=re.I)
@@ -120,6 +120,8 @@ class PysdunMssql:
             for domain in self.schema.domains:
                 data_type = PysdunMssql.replace_data_type(domain.data_type)
                 domain_name = domain.name
+                if 't_usermask_id' == domain.name:
+                    data_type = 'varchar(38)'
                 statement = 'create type {0} from {1}'.format(domain_name, data_type)
                 statement = re.sub('default', '-- default', statement, flags=re.I)
                 ddl_udt.append(statement)
@@ -152,6 +154,9 @@ class PysdunMssql:
                 # [w] "data_type" and "serial" exchanged in compare with pgsql
                 field_item = '{} {} {} {} {}'.format(field.name, data_type, serial, not_null, default)
                 field_item = ibe_ddl.strip_statement(field_item)
+                field_item = re.sub("getdate\(\)\(\)", "getdate()", field_item, flags=re.I)
+                field_item = re.sub("getdate\(\)\ \(\)", "getdate()", field_item, flags=re.I)
+
                 field_list.append(field_item)
 
             template = 'create table {} ({})'
@@ -319,7 +324,7 @@ class PysdunMssql:
 
         #
         for data in self.schema.data[:]:
-            data_line = re.sub("'now'", 'getdate()', data, flags=re.I)
+            data_line = re.sub("'now'", 'getdate', data, flags=re.I)
             # print(data_line)
             sql_data.append(data_line)
 
