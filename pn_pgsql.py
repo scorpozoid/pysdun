@@ -137,7 +137,7 @@ class PysdunPgsql:
                                 not_null = ''
                         break
                 
-                #field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
+                # field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)
                         
                 try:
                     field_item = '{} {} {} {} {}'.format(field.name, serial, data_type, not_null, default)

@@ -162,10 +162,9 @@ class PgSchema(Schema):
             domain = domains[dom_name]
             self.domains.append(domain)
 
-
     def parse_tables(self):
         re_create_table = re.compile('create\s+table\s+(\w+)\s+\((.*)?\);', re.IGNORECASE)
-        re_field = re.compile('(\w+)\s+(.*)', re.IGNORECASE)
+        re_field = re.compile('("?\w+"?)\s+(.*)', re.IGNORECASE)
         re_alter_table_pk = re.compile(
             'alter\s+table\s+only\s+(\w+)\s+add\s+constraint\s+(\w+)\s+primary\s+key\s+\((.*)\);', re.IGNORECASE)
         re_alter_table_fk = re.compile(
@@ -192,6 +191,7 @@ class PgSchema(Schema):
                             field_type = field_type.replace("not null", '')
                             nullable = False
                         field_type = strip_nextval(field_type)
+                        field_name = field_name.strip('"')
                         table.add_field(field_name, field_type, nullable, "")
                 if not table_name in self.tables:
                     self.tables[table_name] = table
