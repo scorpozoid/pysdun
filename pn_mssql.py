@@ -152,6 +152,8 @@ class PysdunMssql:
                             #     not_null = ''
                         break
                 # [w] "data_type" and "serial" exchanged in compare with pgsql
+                if "mask_caption" == field.name:
+                    data_type = 't_longname'
                 field_item = '{} {} {} {} {}'.format(field.name, data_type, serial, not_null, default)
                 field_item = ibe_ddl.strip_statement(field_item)
                 field_item = re.sub("getdate\(\)\(\)", "getdate()", field_item, flags=re.I)
@@ -240,6 +242,7 @@ class PysdunMssql:
 
         #
         for view in self.schema.views[:]:
+            view = re.sub('::integer', '', view, flags=re.I)
             view = re.sub('::bigint', '', view, flags=re.I)
             view = re.sub('::text', '', view, flags=re.I)
             view = re.sub('::timestamp with time zone', '', view, flags=re.I)

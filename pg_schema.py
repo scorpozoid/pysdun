@@ -213,18 +213,22 @@ class PgSchema(Schema):
                 field_items = mfk.group(3)
                 ref_table_name = mfk.group(4)
                 ref_field_items = mfk.group(5)
-                del_rule = mfk.group(6)
-                upd_rule = mfk.group(7)
+                upd_rule = mfk.group(6)
+                del_rule = mfk.group(7)
                 field_list = [item.strip() for item in field_items.split(',')]
                 ref_field_list = [item.strip() for item in ref_field_items.split(',')]
                 if del_rule is None:
                     del_rule = "on delete no action"
+                    # print('No del rule!')
                 else:
                     del_rule = del_rule.strip()
+                    # print('del rule - ' + del_rule)
                 if upd_rule is None:
                     upd_rule = "on update no action"
+                    # print('No upd rule!')
                 else:
                     upd_rule = upd_rule.strip()
+                    # print('upd rule - ' + upd_rule)
                 self.tables[table_name].add_fk(key_name, field_list, ref_table_name, ref_field_list, del_rule, upd_rule);
                 continue
 
